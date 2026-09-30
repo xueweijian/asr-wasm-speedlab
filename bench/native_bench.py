@@ -24,7 +24,10 @@ def load_wav(path):
     a = np.frombuffer(data, dtype=np.int16).astype(np.float32) / 32768.0
     if ch > 1:
         a = a.reshape(-1, ch).mean(axis=1)
-    assert sr == 16000, f"sr={sr}"
+    if sr != 16000:  # 8k 电话信道考卷：线性插值升到 16k
+        n = int(len(a) / sr * 16000)
+        a = np.interp(np.linspace(0, len(a) - 1, n), np.arange(len(a)), a).astype(np.float32)
+        sr = 16000
     return a, sr
 
 
