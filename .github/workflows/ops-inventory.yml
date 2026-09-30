@@ -1,0 +1,29 @@
+name: ops-inventory
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['bench/ops_inventory.py']
+
+permissions:
+  contents: write
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install onnx
+      - name: Extract op sets + weight breakdown
+        run: python bench/ops_inventory.py
+      - name: Commit results
+        run: |
+          git config user.name "bench-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add results/ops-inventory.json
+          git diff --cached --quiet && echo "no changes" || (git commit -m "bench: ops inventory ${GITHUB_SHA::7}" && git pull --rebase && git push)

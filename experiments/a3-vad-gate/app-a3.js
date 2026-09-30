@@ -51,6 +51,7 @@ Module.onRuntimeInitialized = function () {
   const t0 = performance.now();
   recognizer = createOnlineRecognizer(Module);
   M.load.recognizerInitMs = +(performance.now() - t0).toFixed(1);
+  M.load.readySinceNav = Math.round(performance.now()); // 冷启动分解：导航→runtime就绪总墙钟
   M.ready = true;
   startBtn.disabled = false;
   statusEl.textContent = 'ready · a3 能量VAD门控';

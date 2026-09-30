@@ -35,6 +35,17 @@ def run_stream(page, dur):
     return page.evaluate("window.__speedlab")
 
 
+def collect_resources(page):
+    """Resource Timing：各资产下载明细（transferSize=0 即 SW/磁盘缓存命中）"""
+    return page.evaluate(
+        """() => performance.getEntriesByType('resource')
+             .filter(r => /sherpa-onnx|capture-worklet/.test(r.name))
+             .map(r => ({name: r.name.split('/').pop().slice(0,44),
+                         start: Math.round(r.startTime), dur: Math.round(r.duration),
+                         tx: r.transferSize, dec: r.decodedBodySize}))"""
+    )
+
+
 def bench_app(browser, base, app, fixture_dur, logs):
     ctx = browser.new_context()
     page = ctx.new_page()
@@ -60,6 +71,7 @@ def bench_app(browser, base, app, fixture_dur, logs):
         else:
             wait_ready(page)
             out["load"] = page.evaluate("window.__speedlab.load")
+            out["resources"] = collect_resources(page)
             out["stream"] = run_stream(page, fixture_dur)
     except Exception as e:
         out["error"] = str(e).split("\n")[0][:300]
