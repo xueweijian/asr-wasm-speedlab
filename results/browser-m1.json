@@ -2,35 +2,36 @@
   "meta": {
     "engine": "chromium",
     "headless": true,
-    "fixture_s": 17.3,
-    "sha": "5f07613",
-    "runner": "GitHub Actions 1000019476",
+    "fixture_s": 18.3,
+    "sha": "e5b4aba",
+    "runner": "GitHub Actions 1000019488",
     "note": "Chrome假麦克风喂16k考卷; a0=对照组(官方ScriptProcessor路径)"
   },
   "apps": {
     "a0-reference": {
       "load": {
-        "recognizerInitMs": 830.6
+        "recognizerInitMs": 954
       },
       "stream": {
         "app": "a0-reference",
         "ready": true,
         "load": {
-          "recognizerInitMs": 830.6
+          "recognizerInitMs": 954
         },
         "stream": {
-          "audioSec": 19.200000000000014,
-          "feedMs": 25.100000000180444,
-          "decodeMs": 938.3999999997031,
-          "cbCount": 75,
+          "audioSec": 20.224000000000014,
+          "feedMs": 32.10000000028231,
+          "decodeMs": 1164.899999999936,
+          "cbCount": 79,
           "cbGapP95": 260.1,
           "longTasks": 2,
           "results": [
-            "对我做了介绍啊我想说的是大家如果对我的研究感兴趣呢",
-            "重点地想谈三个问题首先呢就是这一轮全球金融动量的表现"
+            "对我做了介绍啊我想说的是呢大家如果对我的研究感兴趣呢",
+            "重点想谈三个问题首先呢就是这一轮全球金融动量的表现",
+            "对我做了介绍啊我想说的是呢"
           ],
-          "rtf": 0.0489,
-          "text": "对我做了介绍啊我想说的是大家如果对我的研究感兴趣呢重点地想谈三个问题首先呢就是这一轮全球金融动量的表现对我做了介绍啊我想说的是呢对我做了介绍"
+          "rtf": 0.0576,
+          "text": "对我做了介绍啊我想说的是呢大家如果对我的研究感兴趣呢重点想谈三个问题首先呢就是这一轮全球金融动量的表现对我做了介绍啊我想说的是呢对"
         },
         "capture": {
           "contextRate": 16000
@@ -40,17 +41,17 @@
     "a1-lazy-cache": {
       "visit1": {
         "swRegisterMs": 0,
-        "visit1ToReadyMs": 1285,
+        "visit1ToReadyMs": 1515,
         "visit2ToReadyMs": null,
-        "recognizerInitMs": 716.6,
+        "recognizerInitMs": 890.1,
         "visit1Bytes": 54167,
         "visit2Bytes": null
       },
       "visit2": {
         "swRegisterMs": 0,
-        "visit1ToReadyMs": 969,
+        "visit1ToReadyMs": 1108,
         "visit2ToReadyMs": null,
-        "recognizerInitMs": 548.8,
+        "recognizerInitMs": 656.9,
         "visit1Bytes": 0,
         "visit2Bytes": null
       },
@@ -59,27 +60,28 @@
         "ready": true,
         "load": {
           "swRegisterMs": 0,
-          "visit1ToReadyMs": 969,
+          "visit1ToReadyMs": 1108,
           "visit2ToReadyMs": null,
-          "recognizerInitMs": 548.8,
+          "recognizerInitMs": 656.9,
           "visit1Bytes": 0,
           "visit2Bytes": null
         },
         "stream": {
-          "audioSec": 19.200000000000014,
-          "feedMs": 24.400000000110595,
-          "decodeMs": 922.7000000000262,
-          "cbCount": 75,
+          "audioSec": 20.224000000000014,
+          "feedMs": 32.99999999983993,
+          "decodeMs": 1140.2000000000407,
+          "cbCount": 79,
           "cbGapP95": 260.1,
           "longTasks": 2,
           "results": [
-            "那么我想说的是呢大家如果对我的研究感兴趣呢",
-            "重点地想谈三个问题首先呢就是这一轮全球金融动量的表现"
+            "我做了介绍啊我想说的是呢大家如果对我的研究感兴趣呢",
+            "重点想谈三个问题首先呢就是这一轮全球金动荡的表现",
+            "对我做了介绍啊我想说的是呢"
           ],
-          "rtf": 0.0481,
-          "text": "那么我想说的是呢大家如果对我的研究感兴趣呢重点地想谈三个问题首先呢就是这一轮全球金融动量的表现对我做了介绍啊我想说的是呢对我做了介绍那么我想说的是"
+          "rtf": 0.0564,
+          "text": "我做了介绍啊我想说的是呢大家如果对我的研究感兴趣呢重点想谈三个问题首先呢就是这一轮全球金动荡的表现对我做了介绍啊我想说的是呢对我做了介绍"
         },
-        "_clickT0": 66.09999999999127,
+        "_clickT0": 65.89999999999418,
         "capture": {
           "contextRate": 16000
         }
@@ -87,28 +89,29 @@
     },
     "a2-worklet-16k": {
       "load": {
-        "recognizerInitMs": 770.3
+        "recognizerInitMs": 893.2
       },
       "stream": {
         "app": "a2-worklet-16k",
         "ready": true,
         "load": {
-          "recognizerInitMs": 770.3
+          "recognizerInitMs": 893.2
         },
         "stream": {
-          "audioSec": 19.712000000000014,
-          "feedMs": 29.900000001463923,
-          "decodeMs": 950.4999999997817,
-          "cbCount": 2469,
-          "blockCount": 308,
+          "audioSec": 20.736000000000015,
+          "feedMs": 38.49999999784632,
+          "decodeMs": 1183.0000000001455,
+          "cbCount": 2592,
+          "blockCount": 324,
           "cbGapP95": 10.1,
           "longTasks": 2,
           "results": [
-            "那么我想说的是大家如果对我的研究感兴趣呢",
-            "重点地想谈三个问题首先呢这一轮全球金融动量的表现"
+            "对我做了介绍啊我想说的是呢大家如果对我的研究感兴趣呢",
+            "重点想谈三个问题首先呢就是这一轮全球金动荡的表现",
+            "对我做了介绍啊我想说的是呢"
           ],
-          "rtf": 0.0485,
-          "text": "那么我想说的是大家如果对我的研究感兴趣呢重点地想谈三个问题首先呢这一轮全球金融动量的表现对我做了介绍啊我想说的是对我做了介绍那么我想说的"
+          "rtf": 0.0575,
+          "text": "对我做了介绍啊我想说的是呢大家如果对我的研究感兴趣呢重点想谈三个问题首先呢就是这一轮全球金动荡的表现对我做了介绍啊我想说的是呢对我做了介绍"
         },
         "capture": {
           "contextRate": 16000,
@@ -119,33 +122,33 @@
     },
     "a3-vad-gate": {
       "load": {
-        "recognizerInitMs": 708.2
+        "recognizerInitMs": 892.6
       },
       "stream": {
         "app": "a3-vad-gate",
         "ready": true,
         "load": {
-          "recognizerInitMs": 708.2
+          "recognizerInitMs": 892.6
         },
         "stream": {
-          "audioSec": 19.200000000000014,
-          "feedMs": 0,
-          "decodeMs": 0,
-          "cbCount": 75,
+          "audioSec": 20.224000000000014,
+          "feedMs": 22.89999999970314,
+          "decodeMs": 819.299999999901,
+          "cbCount": 79,
           "cbGapP95": 260.1,
-          "longTasks": 1,
+          "longTasks": 2,
           "results": [],
-          "rtf": 0,
-          "activeRtf": 0,
-          "text": ""
+          "rtf": 0.0405,
+          "activeRtf": 0.0582,
+          "text": "做了介绍那么我想说的是呢大家如果对我的研究感兴趣呢重点地想谈三个问题首先呢就是这一轮全球进入度量的表现我做了介绍那么我想说的是呢对我做了介绍"
         },
         "vad": {
           "mode": "energy",
-          "activeSec": 0,
-          "idleSec": 19.200000000000014,
-          "speechPct": 0,
-          "noiseDb": -10.3,
-          "thresholdDb": 1.7
+          "activeSec": 14.08000000000001,
+          "idleSec": 6.144000000000004,
+          "speechPct": 69.6,
+          "noiseDb": -46.1,
+          "thresholdDb": -34.1
         },
         "capture": {
           "contextRate": 16000
