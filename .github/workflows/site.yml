@@ -54,12 +54,29 @@ jobs:
           cd sherpa-onnx
           ./build-wasm-simd-asr.sh
 
+      - name: Build sherpa-onnx wasm (c1: aggressive size flags)
+        continue-on-error: true   # 变体构建失败不拖累官方轮（c1 缺席则 bench 跳过）
+        shell: bash
+        run: |
+          cd sherpa-onnx
+          # 同一源码二次构建：独立 build 目录 + 体积激进旗标（-Os + LTO + closure）
+          sed -i 's/build-wasm-simd-asr/build-wasm-minsize/g' build-wasm-simd-asr.sh
+          sed -i 's|set(MY_FLAGS " |set(MY_FLAGS " -Os -flto --closure 1 |' wasm/asr/CMakeLists.txt wasm/wasm-common.cmake
+          grep -n 'MY_FLAGS "' wasm/asr/CMakeLists.txt wasm/wasm-common.cmake | head -4
+          ./build-wasm-simd-asr.sh 2>&1 | tail -5
+
       - name: Assemble site (baseline root + experiments/* subpaths + root sw)
         shell: bash
         run: |
           mkdir -p site
           cp -r sherpa-onnx/build-wasm-simd-asr/install/bin/wasm/asr/* site/
           if [ -d sw.js ] || [ -f sw.js ]; then cp sw.js site/sw.js; fi
+          # c1：激进体积旗标构建的独立资产目录（页面与其 wasm 同目录，不经根路径）
+          if [ -d sherpa-onnx/build-wasm-minsize/install/bin/wasm/asr ]; then
+            mkdir -p site/c1-minsize
+            cp -r sherpa-onnx/build-wasm-minsize/install/bin/wasm/asr/* site/c1-minsize/
+            ls -la site/c1-minsize/*.wasm site/c1-minsize/*.js 2>/dev/null | awk '{print $5, $9}'
+          fi
           for d in experiments/*/; do
             name=$(basename "$d")
             mkdir -p "site/$name"
