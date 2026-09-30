@@ -13,7 +13,7 @@ import wave
 
 from playwright.sync_api import sync_playwright
 
-APPS = ["a0-reference", "a1-lazy-cache", "a2-worklet-16k", "a3-vad-gate", "a4-worklet-vad", "c1-minsize"]
+APPS = ["a0-reference", "a1-lazy-cache", "a2-worklet-16k", "a3-vad-gate", "a4-worklet-vad", "c1-minsize", "c2-minort", "c3-skip-sniff"]
 
 
 def wav_seconds(path):

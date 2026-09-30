@@ -55,7 +55,7 @@ jobs:
           ./build-wasm-simd-asr.sh
 
       - name: "Build sherpa-onnx wasm (c1 - aggressive size flags)"
-        continue-on-error: true   # 变体构建失败不拖累官方轮（c1 缺席则 bench 跳过）
+        continue-on-error: true   # 变体构建失败不拖累官方轮
         shell: bash
         run: |
           cd sherpa-onnx
@@ -65,18 +65,38 @@ jobs:
           grep -n 'MY_FLAGS "' wasm/asr/CMakeLists.txt wasm/wasm-common.cmake | head -4
           ./build-wasm-simd-asr.sh 2>&1 | tail -5
 
+      - name: "Build sherpa-onnx wasm (c2 - minimal-op ORT)"
+        continue-on-error: true
+        shell: bash
+        run: |
+          cd sherpa-onnx
+          git checkout -- build-wasm-simd-asr.sh   # 恢复原版脚本，避免 c1 的 sed 残留
+          if [ ! -f ../wasm/third_party/onnxruntime-wasm-static_lib-simd-1.28.2.zip ]; then
+            echo "c2 skipped: no minimal ORT lib in repo (run ort-minimal workflow first)"; exit 0
+          fi
+          cp ../wasm/third_party/onnxruntime-wasm-static_lib-simd-1.28.2.zip ./
+          NEW_HASH=$(sha256sum onnxruntime-wasm-static_lib-simd-1.28.2.zip | awk '{print $1}')
+          sed -i "s/set(onnxruntime_HASH .*)/set(onnxruntime_HASH SHA256=${NEW_HASH})/" cmake/onnxruntime-wasm-simd.cmake
+          grep -n onnxruntime_HASH cmake/onnxruntime-wasm-simd.cmake | head -1
+          sed -i 's/build-wasm-simd-asr/build-wasm-minort/g' build-wasm-simd-asr.sh
+          ./build-wasm-simd-asr.sh 2>&1 | tail -5
+
       - name: Assemble site (baseline root + experiments/* subpaths + root sw)
         shell: bash
         run: |
           mkdir -p site
           cp -r sherpa-onnx/build-wasm-simd-asr/install/bin/wasm/asr/* site/
           if [ -d sw.js ] || [ -f sw.js ]; then cp sw.js site/sw.js; fi
-          # c1：激进体积旗标构建的独立资产目录（页面与其 wasm 同目录，不经根路径）
+          # c1/c2 变体的独立资产目录（页面与其 wasm 同目录，不经根路径）
           if [ -d sherpa-onnx/build-wasm-minsize/install/bin/wasm/asr ]; then
             mkdir -p site/c1-minsize
             cp -r sherpa-onnx/build-wasm-minsize/install/bin/wasm/asr/* site/c1-minsize/
-            ls -la site/c1-minsize/*.wasm site/c1-minsize/*.js 2>/dev/null | awk '{print $5, $9}'
           fi
+          if [ -d sherpa-onnx/build-wasm-minort/install/bin/wasm/asr ]; then
+            mkdir -p site/c2-minort
+            cp -r sherpa-onnx/build-wasm-minort/install/bin/wasm/asr/* site/c2-minort/
+          fi
+          ls -la site/*/*.wasm 2>/dev/null | awk '{print $5, $9}'
           for d in experiments/*/; do
             name=$(basename "$d")
             mkdir -p "site/$name"

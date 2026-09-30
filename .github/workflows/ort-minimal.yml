@@ -1,0 +1,54 @@
+name: ort-minimal
+
+# 产出 sherpa 可直接消费的最小算子 ORT wasm 静态库（zip: include/ + lib/lib*.a）
+# 版本对齐 csukuangfj 预编译库（v1.28.2），供 site.yml 的 c2 变体构建使用
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout onnxruntime v1.28.2 (shallow + submodules)
+        run: |
+          git clone --depth 1 --branch v1.28.2 --recurse-submodules --shallow-submodules --jobs 4 \
+            https://github.com/microsoft/onnxruntime ort
+
+      - uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 4.0.23
+          actions-cache-folder: 'emsdk-cache'
+
+      - name: Build ORT wasm (simd, no contrib/ml ops)
+        run: |
+          cd ort
+          pip install -q -r requirements.txt
+          ./build.sh --build_wasm --enable_wasm_simd \
+            --disable_ml_ops --disable_contrib_ops \
+            --skip_tests --config Release 2>&1 | tail -15
+
+      - name: Package sherpa-consumable zip
+        run: |
+          mkdir -p pkg/include pkg/lib
+          cp -r ort/include/onnxruntime pkg/include/
+          find ort/build -name 'libonnxruntime*.a' -exec cp {} pkg/lib/ \;
+          [ -n "$(ls pkg/lib/*.a 2>/dev/null)" ] || { echo "no static lib produced"; find ort/build -name '*.a' | head; exit 1; }
+          ls -la pkg/lib/
+          (cd pkg && zip -qr ../onnxruntime-wasm-static_lib-simd-1.28.2.zip .)
+          sha256sum onnxruntime-wasm-static_lib-simd-1.28.2.zip | tee wasm/third_party.sha256
+          mkdir -p wasm/third_party
+          mv onnxruntime-wasm-static_lib-simd-1.28.2.zip wasm/third_party/
+          ls -la wasm/third_party/
+
+      - name: Commit artifact
+        run: |
+          git config user.name "bench-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add wasm/third_party/
+          git diff --cached --quiet && echo "no changes" || (git commit -m "build: ort wasm minimal-op static lib (no contrib/ml ops) ${GITHUB_SHA::7}" && git pull --rebase && git push)

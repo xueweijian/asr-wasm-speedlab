@@ -1,4 +1,4 @@
-// a4-worklet-vad: M1.5 合体 = a2 AudioWorklet 采集 + a3 能量VAD门控 + pre-roll 防首字clip
+// c2-minort: a4 同逻辑，唯一变量 = ORT 静态库（最小算子集构建，无 contrib/ml kernels）
 // 预期（相对同轮 a0）：cbGapP95 掉到 ~10ms 量级（a2 的收益）且 rtf 掉 ~30%（a3 的收益）
 // 新变量 pre-roll：语音起点前 320ms 缓冲在 onset 时一次性补喂，修 a3 已知的首字clip
 const startBtn = document.getElementById('startBtn');
@@ -7,15 +7,15 @@ const statusEl = document.getElementById('status');
 const textArea = document.getElementById('results');
 const metricsEl = document.getElementById('metrics');
 
-const MET = {
-  app: 'c1-minsize', ready: false,
+const M = {
+  app: 'c2-minort', ready: false,
   load: { recognizerInitMs: 0 },
   stream: { audioSec: 0, feedMs: 0, decodeMs: 0, cbCount: 0, blockCount: 0, cbGapP95: 0, longTasks: 0, results: [] },
   vad: { mode: 'energy+preroll', activeSec: 0, idleSec: 0, speechPct: 0, noiseDb: 0, thresholdDb: 0, onsets: 0, prerollFedSec: 0 },
 };
-window.__speedlab = MET;
+window.__speedlab = M;
 
-function dump() { metricsEl.textContent = JSON.stringify(MET, null, 1); }
+function dump() { metricsEl.textContent = JSON.stringify(M, null, 1); }
 
 // ---- 能量 VAD（同 a3 参数）：500ms 校准噪声底 → 门限=噪声底+12dB，350ms hangover ----
 const CAL_MS = 500, THRESH_DB = 12, HANGOVER_MS = 350;
@@ -30,13 +30,13 @@ function vadDecision(samples, now) {
   if (now - calStart < CAL_MS) { // 校准期：指数平滑噪声底
     noiseDb = noiseDb === -60 ? db : noiseDb * 0.95 + db * 0.05;
     noiseDb = Math.min(noiseDb, -35); // 防呆：校准期撞上语音别把门限抬上天
-    MET.vad.noiseDb = +noiseDb.toFixed(1);
+    M.vad.noiseDb = +noiseDb.toFixed(1);
     return false;
   }
-  MET.vad.thresholdDb = +(noiseDb + THRESH_DB).toFixed(1);
+  M.vad.thresholdDb = +(noiseDb + THRESH_DB).toFixed(1);
   if (db > noiseDb + THRESH_DB) {
     hangoverUntil = now + HANGOVER_MS;
-    if (!inSpeech) { inSpeech = true; MET.vad.onsets++; }
+    if (!inSpeech) { inSpeech = true; M.vad.onsets++; }
   } else if (now > hangoverUntil) {
     inSpeech = false;
   }
@@ -45,23 +45,23 @@ function vadDecision(samples, now) {
 
 let lastResult = '', resultList = [];
 Module = {};
-Module.locateFile = p => p; // 资产与页面同目录（本实验用独立构建的 wasm）
+Module.locateFile = p => p; // 资产与页面同目录（本实验用最小算子 ORT 构建）
 Module.setStatus = s => { if (s) statusEl.textContent = s; };
 Module.print = () => {};
 Module.printErr = () => {};
 Module.onRuntimeInitialized = function () {
   const t0 = performance.now();
   recognizer = createOnlineRecognizer(Module);
-  MET.load.recognizerInitMs = +(performance.now() - t0).toFixed(1);
-  MET.load.readySinceNav = Math.round(performance.now()); // 冷启动分解：导航→runtime就绪总墙钟
-  MET.ready = true;
+  M.load.recognizerInitMs = +(performance.now() - t0).toFixed(1);
+  M.load.readySinceNav = Math.round(performance.now()); // 冷启动分解：导航→runtime就绪总墙钟
+  M.ready = true;
   startBtn.disabled = false;
-  statusEl.textContent = 'ready · c1 激进体积旗标 wasm';
+  statusEl.textContent = 'ready · c2 最小算子 ORT';
   dump();
 };
 
 try {
-  new PerformanceObserver(list => { MET.stream.longTasks += list.getEntries().length; })
+  new PerformanceObserver(list => { M.stream.longTasks += list.getEntries().length; })
     .observe({ entryTypes: ['longtask'] });
 } catch (e) {}
 
@@ -78,21 +78,21 @@ function feedRecognizer(samples) {
   if (!recognizer_stream) recognizer_stream = recognizer.createStream();
   let t0 = performance.now();
   recognizer_stream.acceptWaveform(expectedSampleRate, samples);
-  MET.stream.feedMs += performance.now() - t0;
+  M.stream.feedMs += performance.now() - t0;
   t0 = performance.now();
   while (recognizer.isReady(recognizer_stream)) recognizer.decode(recognizer_stream);
-  MET.stream.decodeMs += performance.now() - t0;
+  M.stream.decodeMs += performance.now() - t0;
   const result = recognizer.getResult(recognizer_stream).text;
   if (result.length > 0 && result !== lastResult) lastResult = result;
 }
 
 function processBlock(samples, audioTime) {
-  if (!MET.ready) return; // 模型未就绪：丢弃早期音频（autoplay 下渲染循环可能先于 runtime 启动）
+  if (!M.ready) return; // 模型未就绪：丢弃早期音频（autoplay 下渲染循环可能先于 runtime 启动）
   const now = performance.now();
   if (lastMsgTime) msgGaps.push(now - lastMsgTime);
   lastMsgTime = now;
   if (!calStart) calStart = now;
-  MET.stream.cbCount++;
+  M.stream.cbCount++;
 
   if (accLen + samples.length <= CHUNK) {
     acc.set(samples, accLen);
@@ -103,22 +103,22 @@ function processBlock(samples, audioTime) {
   }
   if (accLen < CHUNK) return;
   const block = acc; acc = new Float32Array(CHUNK); accLen = 0;
-  MET.stream.blockCount++;
+  M.stream.blockCount++;
   const durSec = block.length / expectedSampleRate;
-  MET.stream.audioSec += durSec;
+  M.stream.audioSec += durSec;
 
   const wasSpeech = inSpeech;
   const active = vadDecision(block, now);
   if (active) {
-    MET.vad.activeSec += durSec;
+    M.vad.activeSec += durSec;
     if (!wasSpeech) {
       // onset：先补喂 pre-roll（320ms 缓冲），把被门控吃掉的字头找回来
-      for (const pre of preRoll) { feedRecognizer(pre); MET.vad.prerollFedSec += pre.length / expectedSampleRate; }
+      for (const pre of preRoll) { feedRecognizer(pre); M.vad.prerollFedSec += pre.length / expectedSampleRate; }
     }
     preRoll = []; // 语音期不再需要缓冲
     feedRecognizer(block);
   } else {
-    MET.vad.idleSec += durSec;
+    M.vad.idleSec += durSec;
     preRoll.push(block); // idle 也持续攒最近音频
     if (preRoll.length > PRE_ROLL_CHUNKS) preRoll.shift();
   }
@@ -127,21 +127,21 @@ function processBlock(samples, audioTime) {
   if (recognizer_stream) {
     const isEndpoint = recognizer.isEndpoint(recognizer_stream);
     if (isEndpoint) {
-      if (lastResult.length) { resultList.push(lastResult); MET.stream.results.push(lastResult); lastResult = ''; }
+      if (lastResult.length) { resultList.push(lastResult); M.stream.results.push(lastResult); lastResult = ''; }
       recognizer.reset(recognizer_stream);
     }
   }
 
-  MET.vad.speechPct = +(MET.vad.activeSec / Math.max(MET.stream.audioSec, 1e-9) * 100).toFixed(1);
+  M.vad.speechPct = +(M.vad.activeSec / Math.max(M.stream.audioSec, 1e-9) * 100).toFixed(1);
   textArea.value = resultList.join('\n') + (lastResult ? '\n' + lastResult : '');
   dump();
 }
 
 async function init(stream) {
   audioCtx = new AudioContext({ sampleRate: 16000 });
-  MET.capture = { contextRate: audioCtx.sampleRate, quantum: 128, chunk: CHUNK };
+  M.capture = { contextRate: audioCtx.sampleRate, quantum: 128, chunk: CHUNK };
   if (audioCtx.sampleRate !== expectedSampleRate) {
-    MET.capture.warn = 'context 不是 16k，需重采样';
+    M.capture.warn = 'context 不是 16k，需重采样';
   }
   await audioCtx.audioWorklet.addModule('capture-worklet.js');
   mediaStream = audioCtx.createMediaStreamSource(stream);
@@ -157,11 +157,11 @@ async function init(stream) {
   };
   stopBtn.onclick = () => {
     msgGaps.sort((a, b) => a - b);
-    MET.stream.cbGapP95 = msgGaps.length ? +msgGaps[Math.floor(msgGaps.length * 0.95)].toFixed(1) : 0;
+    M.stream.cbGapP95 = msgGaps.length ? +msgGaps[Math.floor(msgGaps.length * 0.95)].toFixed(1) : 0;
     // 有效 RTF = decodeMs / 全部音频时长（含静音）——静音省下的都是赚的
-    MET.stream.rtf = +(MET.stream.decodeMs / 1000 / Math.max(MET.stream.audioSec, 1e-9)).toFixed(4);
-    MET.stream.activeRtf = +(MET.stream.decodeMs / 1000 / Math.max(MET.vad.activeSec, 1e-9)).toFixed(4);
-    MET.stream.text = (resultList.join('') + lastResult).slice(0, 120);
+    M.stream.rtf = +(M.stream.decodeMs / 1000 / Math.max(M.stream.audioSec, 1e-9)).toFixed(4);
+    M.stream.activeRtf = +(M.stream.decodeMs / 1000 / Math.max(M.vad.activeSec, 1e-9)).toFixed(4);
+    M.stream.text = (resultList.join('') + lastResult).slice(0, 120);
     dump();
     startBtn.disabled = false; stopBtn.disabled = true;
   };
