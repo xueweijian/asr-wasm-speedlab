@@ -3,35 +3,35 @@
     "engine": "chromium",
     "headless": true,
     "fixture_s": 18.3,
-    "sha": "d4ffa01",
-    "runner": "GitHub Actions 1000019492",
+    "sha": "1df6423",
+    "runner": "GitHub Actions 1000019495",
     "note": "Chrome假麦克风喂16k考卷; a0=对照组(官方ScriptProcessor路径)"
   },
   "apps": {
     "a0-reference": {
       "load": {
-        "recognizerInitMs": 967.3
+        "recognizerInitMs": 954.4
       },
       "stream": {
         "app": "a0-reference",
         "ready": true,
         "load": {
-          "recognizerInitMs": 967.3
+          "recognizerInitMs": 954.4
         },
         "stream": {
           "audioSec": 20.224000000000014,
-          "feedMs": 41.600000000107684,
-          "decodeMs": 1146.899999999965,
+          "feedMs": 46.100000000107684,
+          "decodeMs": 1145.6000000000204,
           "cbCount": 79,
           "cbGapP95": 260.1,
           "longTasks": 2,
           "results": [
-            "对我做了介绍啊我想说的是大家如果对我的研究感兴趣呢",
+            "对我做了介绍那么我想说的是大家如果对我的研究感兴趣呢",
             "重点想谈三个问题首先呢就是这一轮全球金融动量的表现",
             "对我做了介绍啊我想说的是"
           ],
-          "rtf": 0.0567,
-          "text": "对我做了介绍啊我想说的是大家如果对我的研究感兴趣呢重点想谈三个问题首先呢就是这一轮全球金融动量的表现对我做了介绍啊我想说的是对"
+          "rtf": 0.0566,
+          "text": "对我做了介绍那么我想说的是大家如果对我的研究感兴趣呢重点想谈三个问题首先呢就是这一轮全球金融动量的表现对我做了介绍啊我想说的是对我做了介绍"
         },
         "capture": {
           "contextRate": 16000
@@ -41,17 +41,17 @@
     "a1-lazy-cache": {
       "visit1": {
         "swRegisterMs": 0,
-        "visit1ToReadyMs": 1560,
+        "visit1ToReadyMs": 1566,
         "visit2ToReadyMs": null,
-        "recognizerInitMs": 941.4,
+        "recognizerInitMs": 948.3,
         "visit1Bytes": 54167,
         "visit2Bytes": null
       },
       "visit2": {
         "swRegisterMs": 0,
-        "visit1ToReadyMs": 1197,
+        "visit1ToReadyMs": 1173,
         "visit2ToReadyMs": null,
-        "recognizerInitMs": 750.9,
+        "recognizerInitMs": 728.9,
         "visit1Bytes": 0,
         "visit2Bytes": null
       },
@@ -60,28 +60,28 @@
         "ready": true,
         "load": {
           "swRegisterMs": 0,
-          "visit1ToReadyMs": 1197,
+          "visit1ToReadyMs": 1173,
           "visit2ToReadyMs": null,
-          "recognizerInitMs": 750.9,
+          "recognizerInitMs": 728.9,
           "visit1Bytes": 0,
           "visit2Bytes": null
         },
         "stream": {
           "audioSec": 20.224000000000014,
-          "feedMs": 34.099999999816646,
-          "decodeMs": 1117.00000000016,
+          "feedMs": 42.39999999997963,
+          "decodeMs": 1160.500000000131,
           "cbCount": 79,
           "cbGapP95": 260.1,
           "longTasks": 2,
           "results": [
             "我做了介绍啊那么我想说的是大家如果对我的研究感兴趣呢",
-            "重点地想谈三个问题首先呢就是这一轮全球金融动量的表现",
+            "重点地想谈三个问题首先呢这一轮全球金融动量的表现",
             "对我做了介绍啊我想说的是"
           ],
-          "rtf": 0.0552,
-          "text": "我做了介绍啊那么我想说的是大家如果对我的研究感兴趣呢重点地想谈三个问题首先呢就是这一轮全球金融动量的表现对我做了介绍啊我想说的是对我做了介绍"
+          "rtf": 0.0574,
+          "text": "我做了介绍啊那么我想说的是大家如果对我的研究感兴趣呢重点地想谈三个问题首先呢这一轮全球金融动量的表现对我做了介绍啊我想说的是对我做了介绍"
         },
-        "_clickT0": 85.89999999999418,
+        "_clickT0": 77.90000000000873,
         "capture": {
           "contextRate": 16000
         }
@@ -89,29 +89,29 @@
     },
     "a2-worklet-16k": {
       "load": {
-        "recognizerInitMs": 952.7
+        "recognizerInitMs": 969.9
       },
       "stream": {
         "app": "a2-worklet-16k",
         "ready": true,
         "load": {
-          "recognizerInitMs": 952.7
+          "recognizerInitMs": 969.9
         },
         "stream": {
-          "audioSec": 21.824000000000016,
-          "feedMs": 47.999999998661224,
-          "decodeMs": 1212.9000000001834,
-          "cbCount": 2741,
-          "blockCount": 342,
+          "audioSec": 20.736000000000015,
+          "feedMs": 59.9999999996362,
+          "decodeMs": 1152.1999999998516,
+          "cbCount": 2598,
+          "blockCount": 324,
           "cbGapP95": 10.1,
           "longTasks": 2,
           "results": [
             "对我做了介绍啊那么我想说的是大家如果对我的研究感兴趣呢",
-            "重点想摊上个问题首先呢就是这一轮全球金融动量的表现",
-            "对我做了介绍啊我想说的是"
+            "重点地想看三个问题首先呢就是这一轮全球金融动量的表现",
+            "对我做了介绍啊我想说的是呢"
           ],
           "rtf": 0.0558,
-          "text": "对我做了介绍啊那么我想说的是大家如果对我的研究感兴趣呢重点想摊上个问题首先呢就是这一轮全球金融动量的表现对我做了介绍啊我想说的是对我做了介绍"
+          "text": "对我做了介绍啊那么我想说的是大家如果对我的研究感兴趣呢重点地想看三个问题首先呢就是这一轮全球金融动量的表现对我做了介绍啊我想说的是呢对我做了介绍"
         },
         "capture": {
           "contextRate": 16000,
@@ -122,33 +122,33 @@
     },
     "a3-vad-gate": {
       "load": {
-        "recognizerInitMs": 974.9
+        "recognizerInitMs": 940.1
       },
       "stream": {
         "app": "a3-vad-gate",
         "ready": true,
         "load": {
-          "recognizerInitMs": 974.9
+          "recognizerInitMs": 940.1
         },
         "stream": {
           "audioSec": 20.224000000000014,
-          "feedMs": 21.099999999802094,
-          "decodeMs": 657.7000000000407,
+          "feedMs": 34.200000000186265,
+          "decodeMs": 797.1999999998952,
           "cbCount": 79,
           "cbGapP95": 260.1,
           "longTasks": 2,
           "results": [],
-          "rtf": 0.0325,
-          "activeRtf": 0.0571,
-          "text": "了介绍那么我想说的是大家如果对我的研究感觉来想谈三个问题我现在就是这一轮全球金融动量的表现做了介绍那么我想说的是对我做了介绍"
+          "rtf": 0.0394,
+          "activeRtf": 0.0566,
+          "text": "做了介绍那么我想说的是大家如果对我的研究感兴趣呢重点地想谈三个问题首先呢就是这一轮全球金融动量的表现对我做了介绍那么我想说的是呢对我做了介绍"
         },
         "vad": {
           "mode": "energy",
-          "activeSec": 11.520000000000008,
-          "idleSec": 8.704000000000006,
-          "speechPct": 57,
-          "noiseDb": -35,
-          "thresholdDb": -23
+          "activeSec": 14.08000000000001,
+          "idleSec": 6.144000000000004,
+          "speechPct": 69.6,
+          "noiseDb": -40.9,
+          "thresholdDb": -28.9
         },
         "capture": {
           "contextRate": 16000
@@ -157,36 +157,36 @@
     },
     "a4-worklet-vad": {
       "load": {
-        "recognizerInitMs": 926
+        "recognizerInitMs": 1003.8
       },
       "stream": {
         "app": "a4-worklet-vad",
         "ready": true,
         "load": {
-          "recognizerInitMs": 926
+          "recognizerInitMs": 1003.8
         },
         "stream": {
-          "audioSec": 21.760000000000016,
-          "feedMs": 35.699999997828854,
-          "decodeMs": 955.9000000003725,
-          "cbCount": 2723,
-          "blockCount": 340,
+          "audioSec": 21.696000000000016,
+          "feedMs": 39.70000000184518,
+          "decodeMs": 924.8999999999069,
+          "cbCount": 2719,
+          "blockCount": 339,
           "cbGapP95": 10.1,
           "longTasks": 2,
           "results": [],
-          "rtf": 0.044,
-          "activeRtf": 0.0625,
-          "text": "对我做了介绍那么我想说的是呢大家如果对我的研究感兴趣呢重点来想谈三个问题首先呢就是这一轮全球金融动量的表现对我做了介绍那么我想说的是呢对我做了介绍"
+          "rtf": 0.0426,
+          "activeRtf": 0.0642,
+          "text": "对我做了介绍啊那么我想说的是呢大家如果对我的研究感兴趣呢重点地想谈三个问题首先呢就是这一轮全球金融动量的表现对我做了介绍那么我想说的是对我做了介绍"
         },
         "vad": {
           "mode": "energy+preroll",
-          "activeSec": 15.424000000000012,
-          "idleSec": 6.336000000000005,
-          "speechPct": 70.9,
-          "noiseDb": -55.8,
-          "thresholdDb": -43.8,
-          "onsets": 7,
-          "prerollFedSec": 1.536000000000001
+          "activeSec": 14.528000000000011,
+          "idleSec": 7.1680000000000055,
+          "speechPct": 67,
+          "noiseDb": -48.2,
+          "thresholdDb": -36.2,
+          "onsets": 9,
+          "prerollFedSec": 1.728000000000001
         },
         "capture": {
           "contextRate": 16000,
@@ -196,7 +196,5 @@
       }
     }
   },
-  "logs": [
-    "[a2-worklet-16k] pageerror: Cannot read properties of null (reading 'createStream')"
-  ]
+  "logs": []
 }
