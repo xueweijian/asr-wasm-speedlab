@@ -1,0 +1,386 @@
+{
+  "meta": {
+    "env": {
+      "arch": "aarch64",
+      "cpu": "0xd49",
+      "cores": 4,
+      "runner": "GitHub Actions 1000019459",
+      "sha": "151ac83",
+      "sherpa_onnx": "1.13.8"
+    },
+    "chunk_s": 0.32,
+    "runs": 3,
+    "mode": "streaming",
+    "note": "官方sherpa-onnx原生CPU基线(非wasm)",
+    "init_ms": {
+      "zipformer-14m/t1": 586,
+      "zipformer-14m/t2": 558,
+      "zipformer-14m/t4": 577,
+      "zipformer-small-ctc/t1": 811,
+      "zipformer-small-ctc/t2": 833,
+      "zipformer-small-ctc/t4": 824
+    }
+  },
+  "results": [
+    {
+      "model": "zipformer-14m",
+      "threads": 1,
+      "wav": "0.wav",
+      "audio_s": 5.61,
+      "decode_ms": 117.5,
+      "rtf": 0.0209,
+      "x_realtime": 47.7,
+      "text": "对我做了介绍那么我想说的是大家如果对我的研究感兴趣呢"
+    },
+    {
+      "model": "zipformer-14m",
+      "threads": 1,
+      "wav": "1.wav",
+      "audio_s": 5.15,
+      "decode_ms": 103.5,
+      "rtf": 0.0201,
+      "x_realtime": 49.8,
+      "text": "重点呢想谈三个问题首先呢就是这一轮全球金融动量的表现"
+    },
+    {
+      "model": "zipformer-14m",
+      "threads": 1,
+      "wav": "8k.wav",
+      "audio_s": 4.52,
+      "decode_ms": 92.2,
+      "rtf": 0.0204,
+      "x_realtime": 49.0,
+      "text": "分析师这一次全球金融动荡背后的根源"
+    },
+    {
+      "model": "zipformer-14m",
+      "threads": 1,
+      "wav": "0.wav",
+      "audio_s": 5.61,
+      "decode_ms": 117.7,
+      "rtf": 0.021,
+      "x_realtime": 47.7,
+      "text": "对我做了介绍那么我想说的是大家如果对我的研究感兴趣呢"
+    },
+    {
+      "model": "zipformer-14m",
+      "threads": 1,
+      "wav": "1.wav",
+      "audio_s": 5.15,
+      "decode_ms": 102.8,
+      "rtf": 0.0199,
+      "x_realtime": 50.1,
+      "text": "重点呢想谈三个问题首先呢就是这一轮全球金融动量的表现"
+    },
+    {
+      "model": "zipformer-14m",
+      "threads": 1,
+      "wav": "8k.wav",
+      "audio_s": 4.52,
+      "decode_ms": 89.0,
+      "rtf": 0.0197,
+      "x_realtime": 50.8,
+      "text": "分析师这一次全球金融动荡背后的根源"
+    },
+    {
+      "model": "zipformer-14m",
+      "threads": 2,
+      "wav": "0.wav",
+      "audio_s": 5.61,
+      "decode_ms": 104.4,
+      "rtf": 0.0186,
+      "x_realtime": 53.7,
+      "text": "对我做了介绍那么我想说的是大家如果对我的研究感兴趣呢"
+    },
+    {
+      "model": "zipformer-14m",
+      "threads": 2,
+      "wav": "1.wav",
+      "audio_s": 5.15,
+      "decode_ms": 92.6,
+      "rtf": 0.018,
+      "x_realtime": 55.6,
+      "text": "重点呢想谈三个问题首先呢就是这一轮全球金融动量的表现"
+    },
+    {
+      "model": "zipformer-14m",
+      "threads": 2,
+      "wav": "8k.wav",
+      "audio_s": 4.52,
+      "decode_ms": 83.0,
+      "rtf": 0.0183,
+      "x_realtime": 54.5,
+      "text": "分析师这一次全球金融动荡背后的根源"
+    },
+    {
+      "model": "zipformer-14m",
+      "threads": 2,
+      "wav": "0.wav",
+      "audio_s": 5.61,
+      "decode_ms": 107.5,
+      "rtf": 0.0192,
+      "x_realtime": 52.2,
+      "text": "对我做了介绍那么我想说的是大家如果对我的研究感兴趣呢"
+    },
+    {
+      "model": "zipformer-14m",
+      "threads": 2,
+      "wav": "1.wav",
+      "audio_s": 5.15,
+      "decode_ms": 96.3,
+      "rtf": 0.0187,
+      "x_realtime": 53.5,
+      "text": "重点呢想谈三个问题首先呢就是这一轮全球金融动量的表现"
+    },
+    {
+      "model": "zipformer-14m",
+      "threads": 2,
+      "wav": "8k.wav",
+      "audio_s": 4.52,
+      "decode_ms": 82.0,
+      "rtf": 0.0181,
+      "x_realtime": 55.2,
+      "text": "分析师这一次全球金融动荡背后的根源"
+    },
+    {
+      "model": "zipformer-14m",
+      "threads": 4,
+      "wav": "0.wav",
+      "audio_s": 5.61,
+      "decode_ms": 216.1,
+      "rtf": 0.0385,
+      "x_realtime": 26.0,
+      "text": "对我做了介绍那么我想说的是大家如果对我的研究感兴趣呢"
+    },
+    {
+      "model": "zipformer-14m",
+      "threads": 4,
+      "wav": "1.wav",
+      "audio_s": 5.15,
+      "decode_ms": 163.9,
+      "rtf": 0.0318,
+      "x_realtime": 31.4,
+      "text": "重点呢想谈三个问题首先呢就是这一轮全球金融动量的表现"
+    },
+    {
+      "model": "zipformer-14m",
+      "threads": 4,
+      "wav": "8k.wav",
+      "audio_s": 4.52,
+      "decode_ms": 167.1,
+      "rtf": 0.0369,
+      "x_realtime": 27.1,
+      "text": "分析师这一次全球金融动荡背后的根源"
+    },
+    {
+      "model": "zipformer-14m",
+      "threads": 4,
+      "wav": "0.wav",
+      "audio_s": 5.61,
+      "decode_ms": 160.8,
+      "rtf": 0.0286,
+      "x_realtime": 34.9,
+      "text": "对我做了介绍那么我想说的是大家如果对我的研究感兴趣呢"
+    },
+    {
+      "model": "zipformer-14m",
+      "threads": 4,
+      "wav": "1.wav",
+      "audio_s": 5.15,
+      "decode_ms": 209.9,
+      "rtf": 0.0407,
+      "x_realtime": 24.5,
+      "text": "重点呢想谈三个问题首先呢就是这一轮全球金融动量的表现"
+    },
+    {
+      "model": "zipformer-14m",
+      "threads": 4,
+      "wav": "8k.wav",
+      "audio_s": 4.52,
+      "decode_ms": 177.4,
+      "rtf": 0.0392,
+      "x_realtime": 25.5,
+      "text": "分析师这一次全球金融动荡背后的根源"
+    },
+    {
+      "model": "zipformer-small-ctc",
+      "threads": 1,
+      "wav": "0.wav",
+      "audio_s": 5.61,
+      "decode_ms": 184.8,
+      "rtf": 0.0329,
+      "x_realtime": 30.4,
+      "text": "对我做了介绍那么我想说的是呢大家如果对我的研究感兴趣呢"
+    },
+    {
+      "model": "zipformer-small-ctc",
+      "threads": 1,
+      "wav": "1.wav",
+      "audio_s": 5.15,
+      "decode_ms": 164.1,
+      "rtf": 0.0318,
+      "x_realtime": 31.4,
+      "text": "重点呢想谈三个问题首先呢就是这一轮全球金融动荡的"
+    },
+    {
+      "model": "zipformer-small-ctc",
+      "threads": 1,
+      "wav": "8k.wav",
+      "audio_s": 4.52,
+      "decode_ms": 139.2,
+      "rtf": 0.0308,
+      "x_realtime": 32.5,
+      "text": "深入的分析这一次全球金融动荡背后的"
+    },
+    {
+      "model": "zipformer-small-ctc",
+      "threads": 1,
+      "wav": "0.wav",
+      "audio_s": 5.61,
+      "decode_ms": 183.9,
+      "rtf": 0.0328,
+      "x_realtime": 30.5,
+      "text": "对我做了介绍那么我想说的是呢大家如果对我的研究感兴趣呢"
+    },
+    {
+      "model": "zipformer-small-ctc",
+      "threads": 1,
+      "wav": "1.wav",
+      "audio_s": 5.15,
+      "decode_ms": 162.5,
+      "rtf": 0.0315,
+      "x_realtime": 31.7,
+      "text": "重点呢想谈三个问题首先呢就是这一轮全球金融动荡的"
+    },
+    {
+      "model": "zipformer-small-ctc",
+      "threads": 1,
+      "wav": "8k.wav",
+      "audio_s": 4.52,
+      "decode_ms": 136.6,
+      "rtf": 0.0302,
+      "x_realtime": 33.1,
+      "text": "深入的分析这一次全球金融动荡背后的"
+    },
+    {
+      "model": "zipformer-small-ctc",
+      "threads": 2,
+      "wav": "0.wav",
+      "audio_s": 5.61,
+      "decode_ms": 141.7,
+      "rtf": 0.0252,
+      "x_realtime": 39.6,
+      "text": "对我做了介绍那么我想说的是呢大家如果对我的研究感兴趣呢"
+    },
+    {
+      "model": "zipformer-small-ctc",
+      "threads": 2,
+      "wav": "1.wav",
+      "audio_s": 5.15,
+      "decode_ms": 121.0,
+      "rtf": 0.0235,
+      "x_realtime": 42.6,
+      "text": "重点呢想谈三个问题首先呢就是这一轮全球金融动荡的"
+    },
+    {
+      "model": "zipformer-small-ctc",
+      "threads": 2,
+      "wav": "8k.wav",
+      "audio_s": 4.52,
+      "decode_ms": 107.4,
+      "rtf": 0.0237,
+      "x_realtime": 42.1,
+      "text": "深入的分析这一次全球金融动荡背后的"
+    },
+    {
+      "model": "zipformer-small-ctc",
+      "threads": 2,
+      "wav": "0.wav",
+      "audio_s": 5.61,
+      "decode_ms": 140.2,
+      "rtf": 0.025,
+      "x_realtime": 40.0,
+      "text": "对我做了介绍那么我想说的是呢大家如果对我的研究感兴趣呢"
+    },
+    {
+      "model": "zipformer-small-ctc",
+      "threads": 2,
+      "wav": "1.wav",
+      "audio_s": 5.15,
+      "decode_ms": 121.6,
+      "rtf": 0.0236,
+      "x_realtime": 42.4,
+      "text": "重点呢想谈三个问题首先呢就是这一轮全球金融动荡的"
+    },
+    {
+      "model": "zipformer-small-ctc",
+      "threads": 2,
+      "wav": "8k.wav",
+      "audio_s": 4.52,
+      "decode_ms": 106.4,
+      "rtf": 0.0235,
+      "x_realtime": 42.5,
+      "text": "深入的分析这一次全球金融动荡背后的"
+    },
+    {
+      "model": "zipformer-small-ctc",
+      "threads": 4,
+      "wav": "0.wav",
+      "audio_s": 5.61,
+      "decode_ms": 121.6,
+      "rtf": 0.0217,
+      "x_realtime": 46.2,
+      "text": "对我做了介绍那么我想说的是呢大家如果对我的研究感兴趣呢"
+    },
+    {
+      "model": "zipformer-small-ctc",
+      "threads": 4,
+      "wav": "1.wav",
+      "audio_s": 5.15,
+      "decode_ms": 101.5,
+      "rtf": 0.0197,
+      "x_realtime": 50.8,
+      "text": "重点呢想谈三个问题首先呢就是这一轮全球金融动荡的"
+    },
+    {
+      "model": "zipformer-small-ctc",
+      "threads": 4,
+      "wav": "8k.wav",
+      "audio_s": 4.52,
+      "decode_ms": 88.3,
+      "rtf": 0.0195,
+      "x_realtime": 51.3,
+      "text": "深入的分析这一次全球金融动荡背后的"
+    },
+    {
+      "model": "zipformer-small-ctc",
+      "threads": 4,
+      "wav": "0.wav",
+      "audio_s": 5.61,
+      "decode_ms": 114.4,
+      "rtf": 0.0204,
+      "x_realtime": 49.1,
+      "text": "对我做了介绍那么我想说的是呢大家如果对我的研究感兴趣呢"
+    },
+    {
+      "model": "zipformer-small-ctc",
+      "threads": 4,
+      "wav": "1.wav",
+      "audio_s": 5.15,
+      "decode_ms": 103.2,
+      "rtf": 0.02,
+      "x_realtime": 49.9,
+      "text": "重点呢想谈三个问题首先呢就是这一轮全球金融动荡的"
+    },
+    {
+      "model": "zipformer-small-ctc",
+      "threads": 4,
+      "wav": "8k.wav",
+      "audio_s": 4.52,
+      "decode_ms": 89.0,
+      "rtf": 0.0197,
+      "x_realtime": 50.8,
+      "text": "深入的分析这一次全球金融动荡背后的"
+    }
+  ]
+}
