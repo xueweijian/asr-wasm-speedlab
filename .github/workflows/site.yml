@@ -1,0 +1,131 @@
+name: site
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, 'exp/**']
+    paths: ['experiments/**', 'sw.js', 'bench/**', 'wasm/**', '.github/workflows/site.yml']
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout sherpa-onnx (pinned)
+        uses: actions/checkout@v4
+        with:
+          repository: k2-fsa/sherpa-onnx
+          ref: v1.12.7
+          path: sherpa-onnx
+
+      - name: Install emsdk
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 4.0.23
+          actions-cache-folder: 'emsdk-cache'
+
+      - name: Prepare model assets (zipformer-14m zh)
+        shell: bash
+        run: |
+          cd sherpa-onnx/wasm/asr/assets
+          curl -sSL -o m.tar.bz2 https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-zh-14M-2023-02-23.tar.bz2
+          tar xf m.tar.bz2
+          D=sherpa-onnx-streaming-zipformer-zh-14M-2023-02-23
+          mv $D/encoder-epoch-99-avg-1.int8.onnx encoder.onnx
+          mv $D/decoder-epoch-99-avg-1.int8.onnx decoder.onnx
+          mv $D/joiner-epoch-99-avg-1.int8.onnx joiner.onnx
+          mv $D/tokens.txt ./
+          rm -rf $D m.tar.bz2
+
+      - name: Build sherpa-onnx wasm (single-thread SIMD, official script)
+        shell: bash
+        run: |
+          cd sherpa-onnx
+          ./build-wasm-simd-asr.sh
+
+      - name: Assemble site (baseline root + experiments/* subpaths + root sw)
+        shell: bash
+        run: |
+          mkdir -p site
+          cp -r sherpa-onnx/build-wasm-simd-asr/install/bin/wasm/asr/* site/
+          if [ -d sw.js ] || [ -f sw.js ]; then cp sw.js site/sw.js; fi
+          for d in experiments/*/; do
+            name=$(basename "$d")
+            mkdir -p "site/$name"
+            cp -r "$d". "site/$name/"
+            echo "experiment mounted: /$name/"
+          done
+          ls site/
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  bench:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install deps
+        run: |
+          pip install playwright numpy
+          playwright install --with-deps chromium
+
+      - name: Download site artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: github-pages
+          path: artifact
+
+      - name: Unpack site
+        run: |
+          mkdir -p site && cd site && unzip -qo ../artifact/github-pages.zip || true
+          ls | head
+
+      - name: Make fixture (speech + silence mix)
+        run: |
+          mkdir -p models && cd models
+          curl -sSL -o ctc.tar.bz2 https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-small-ctc-zh-int8-2025-04-01.tar.bz2
+          tar xf ctc.tar.bz2 && rm -f ctc.tar.bz2
+          cd ..
+          python bench/make_fixture.py --models-root models --out /tmp/fixture.wav
+
+      - name: Run browser benchmark
+        run: python bench/browser_bench.py --site site --fixture /tmp/fixture.wav --out results/browser-m1.json
+
+      - name: Commit results
+        run: |
+          git config user.name "bench-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add results/
+          git diff --cached --quiet && echo "no changes" || (git commit -m "bench: browser m1 ${GITHUB_SHA::7}" && git push)

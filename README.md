@@ -24,11 +24,16 @@
 
 | 轨道 | 内容 | 状态 |
 |---|---|---|
-| 00-baseline | 官方 sherpa-onnx wasm 原样构建 | 🚧 |
-| A | 懒加载+Cache API / 16k AudioWorklet / VAD 门控 | ⏳ |
-| B | 多线程 wasm 重编（-pthread + coi-serviceworker） | ⏳ |
+| 00-baseline | 官方 sherpa-onnx wasm 原样构建 + 原生基线锚点 | ✅ |
+| A1 | 懒加载+Cache API（SW cache-first） | 🚧 |
+| A2 | AudioWorklet 16k 采集（替代 ScriptProcessor） | 🚧 |
+| A3 | 能量 VAD 门控（静音不解码） | 🚧 |
+| B | 多线程 wasm 重编（-pthread + coi-serviceworker；14m 只试 2 线程） | ⏳ |
 | C | ORT 瘦身 + 编译激进化 | ⏳ |
-| D | 自写引擎：small-ctc 的 raw WGSL GPU-resient 内核 | ⏳ |
+| D | 自写引擎：small-ctc 的 raw WGSL GPU-resident 内核 | ⏳ |
+
+实验页部署在 Pages 子路径：`/a0-reference/`（对照组）`/a1-lazy-cache/` `/a2-worklet-16k/` `/a3-vad-gate/`；
+自动考台 `bench/browser_bench.py`（Playwright + Chrome 假麦克风），结果落 `results/browser-m1.json`。
 
 ## License
 

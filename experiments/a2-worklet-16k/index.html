@@ -1,0 +1,27 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>a2 AudioWorklet 采集 · asr-wasm-speedlab</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2em auto; padding: 0 1em; }
+  button { padding: .6em 1.4em; margin: .2em .4em .2em 0; font-size: 1em; }
+  textarea { width: 100%; height: 7em; font-size: 1em; }
+  pre { background: #f4f4f4; padding: 10px; font-size: 11px; white-space: pre-wrap; border-radius: 6px; }
+  #status { color: #666; min-height: 1.4em; }
+</style>
+</head>
+<body>
+<h3>asr-wasm-speedlab · a2 AudioWorklet 16k 采集</h3>
+<p>渲染线程 128 帧回调 → 主线程 1024 样本块解码。对照 a0 的 ScriptProcessor。</p>
+<div id="status">loading model…</div>
+<button id="startBtn" disabled>开始识别</button>
+<button id="stopBtn" disabled>停止</button>
+<textarea id="results" placeholder="识别结果"></textarea>
+<pre id="metrics"></pre>
+<script src="../sherpa-onnx-asr.js"></script>
+<script src="app-a2.js"></script>
+<script src="../sherpa-onnx-wasm-main-asr.js"></script>
+</body>
+</html>
