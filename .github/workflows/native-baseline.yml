@@ -1,0 +1,44 @@
+name: native-baseline
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['bench/**', '.github/workflows/native-baseline.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  bench:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install sherpa-onnx
+        run: pip install sherpa-onnx numpy
+
+      - name: Download models (official k2-fsa releases)
+        run: |
+          mkdir -p models && cd models
+          curl -sSL -o 14m.tar.bz2 https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-zh-14M-2023-02-23.tar.bz2
+          curl -sSL -o ctc.tar.bz2 https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-small-ctc-zh-int8-2025-04-01.tar.bz2
+          tar xf 14m.tar.bz2
+          tar xf ctc.tar.bz2
+          rm -f 14m.tar.bz2 ctc.tar.bz2
+          ls -d */
+
+      - name: Run benchmark
+        run: python bench/native_bench.py --models-root models --out results/native-baseline.json
+
+      - name: Commit results
+        run: |
+          git config user.name "bench-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add results/
+          git diff --cached --quiet && echo "no changes" || (git commit -m "bench: native baseline ${GITHUB_SHA::7}" && git push)
