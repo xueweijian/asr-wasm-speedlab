@@ -1,0 +1,169 @@
+{
+  "meta": {
+    "engine": "chromium",
+    "headless": true,
+    "fixture_s": 17.3,
+    "sha": "0c30fce",
+    "runner": "GitHub Actions 1000019473",
+    "note": "Chrome假麦克风喂16k考卷; a0=对照组(官方ScriptProcessor路径)"
+  },
+  "apps": {
+    "a0-reference": {
+      "load": {
+        "recognizerInitMs": 1652.5
+      },
+      "stream": {
+        "app": "a0-reference",
+        "ready": true,
+        "load": {
+          "recognizerInitMs": 1652.5
+        },
+        "stream": {
+          "audioSec": 0,
+          "feedMs": 0,
+          "decodeMs": 0,
+          "cbCount": 0,
+          "cbGapP95": 260.1,
+          "longTasks": 1,
+          "results": [],
+          "rtf": 0,
+          "text": ""
+        },
+        "capture": {
+          "contextRate": 16000
+        }
+      }
+    },
+    "a1-lazy-cache": {
+      "visit1": {
+        "swRegisterMs": 0,
+        "visit1ToReadyMs": 2282,
+        "visit2ToReadyMs": null,
+        "recognizerInitMs": 1683.1,
+        "visit1Bytes": 37981,
+        "visit2Bytes": null
+      },
+      "visit2": {
+        "swRegisterMs": 0,
+        "visit1ToReadyMs": 1763,
+        "visit2ToReadyMs": null,
+        "recognizerInitMs": 1326.8,
+        "visit1Bytes": 0,
+        "visit2Bytes": null
+      },
+      "stream": {
+        "app": "a1-lazy-cache",
+        "ready": true,
+        "load": {
+          "swRegisterMs": 0,
+          "visit1ToReadyMs": 1763,
+          "visit2ToReadyMs": null,
+          "recognizerInitMs": 1326.8,
+          "visit1Bytes": 0,
+          "visit2Bytes": null
+        },
+        "stream": {
+          "audioSec": 0,
+          "feedMs": 0,
+          "decodeMs": 0,
+          "cbCount": 0,
+          "cbGapP95": 260.1,
+          "longTasks": 1,
+          "results": [],
+          "rtf": 0,
+          "text": ""
+        },
+        "_clickT0": 78.29999999998836,
+        "capture": {
+          "contextRate": 16000
+        }
+      }
+    },
+    "a2-worklet-16k": {
+      "load": {
+        "recognizerInitMs": 1680
+      },
+      "stream": {
+        "app": "a2-worklet-16k",
+        "ready": true,
+        "load": {
+          "recognizerInitMs": 1680
+        },
+        "stream": {
+          "audioSec": 0,
+          "feedMs": 0,
+          "decodeMs": 0,
+          "cbCount": 2687,
+          "blockCount": 335,
+          "cbGapP95": 10.1,
+          "longTasks": 2,
+          "results": [],
+          "rtf": 0,
+          "text": ""
+        },
+        "capture": {
+          "contextRate": 16000,
+          "quantum": 128,
+          "chunk": 1024
+        }
+      }
+    },
+    "a3-vad-gate": {
+      "load": {
+        "recognizerInitMs": 1675.5
+      },
+      "stream": {
+        "app": "a3-vad-gate",
+        "ready": true,
+        "load": {
+          "recognizerInitMs": 1675.5
+        },
+        "stream": {
+          "audioSec": 19.200000000000014,
+          "feedMs": 0,
+          "decodeMs": 0,
+          "cbCount": 75,
+          "cbGapP95": 260.1,
+          "longTasks": 1,
+          "results": [],
+          "rtf": 0,
+          "activeRtf": 0,
+          "text": ""
+        },
+        "vad": {
+          "mode": "energy",
+          "activeSec": 0,
+          "idleSec": 19.200000000000014,
+          "speechPct": 0,
+          "noiseDb": -10.1,
+          "thresholdDb": 1.9
+        },
+        "capture": {
+          "contextRate": 16000
+        }
+      }
+    }
+  },
+  "logs": [
+    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
+    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
+    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
+    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
+    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
+    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
+    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
+    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
+    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
+    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
+    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
+    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
+    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
+    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
+    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
+    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
+    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
+    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
+    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
+    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')"
+  ]
+}
