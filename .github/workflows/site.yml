@@ -109,8 +109,12 @@ jobs:
 
       - name: Unpack site
         run: |
-          mkdir -p site && cd site && unzip -qo ../artifact/github-pages.zip || true
-          ls | head
+          if [ -f artifact/github-pages.zip ]; then
+            mkdir -p site && (cd site && unzip -qo ../artifact/github-pages.zip)
+          else
+            mv artifact site   # download-artifact v4 单artifact自动解包
+          fi
+          ls site | head -8
 
       - name: Make fixture (speech + silence mix)
         run: |
@@ -128,4 +132,4 @@ jobs:
           git config user.name "bench-bot"
           git config user.email "bot@users.noreply.github.com"
           git add results/
-          git diff --cached --quiet && echo "no changes" || (git commit -m "bench: browser m1 ${GITHUB_SHA::7}" && git push)
+          git diff --cached --quiet && echo "no changes" || (git commit -m "bench: browser m1 ${GITHUB_SHA::7}" && git pull --rebase && git push)

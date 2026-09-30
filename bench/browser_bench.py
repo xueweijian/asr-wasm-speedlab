@@ -125,6 +125,10 @@ def main():
     print("saved ->", args.out)
     if logs:
         print("\n".join(logs[:10]))
+    # 至少一个 app 出分，否则视为考台故障（防静默空跑）
+    ok = [a for a, r in results.items() if "error" not in r]
+    if not ok:
+        raise SystemExit("FAIL: no app benched - site layout or fixture wrong?")
 
 
 if __name__ == "__main__":
