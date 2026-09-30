@@ -109,11 +109,17 @@ jobs:
 
       - name: Unpack site
         run: |
-          if [ -f artifact/github-pages.zip ]; then
-            mkdir -p site && (cd site && unzip -qo ../artifact/github-pages.zip)
+          mkdir -p site
+          if [ -f artifact/artifact.tar ]; then
+            tar xf artifact/artifact.tar -C site
+          elif [ -f artifact/github-pages.zip ]; then
+            (cd site && unzip -qo ../artifact/github-pages.zip)
           else
-            mv artifact site   # download-artifact v4 单artifact自动解包
+            rm -d site; mv artifact site   # 已自动解包
           fi
+          # 若 tar 外层多包了一层目录则下钻
+          n=$(ls site | wc -l); only=$(ls site)
+          if [ "$n" = "1" ] && [ -d "site/$only" ]; then mv site site_tmp && mv "site_tmp/$only" site && rm -rf site_tmp; fi
           ls site | head -8
 
       - name: Make fixture (speech + silence mix)
