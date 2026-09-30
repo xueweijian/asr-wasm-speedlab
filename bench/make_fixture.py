@@ -44,7 +44,8 @@ def main():
     def floor(sec):
         return (rng.normal(0, 0.0015, int(16000 * sec))).astype(np.float32)
 
-    mix = np.concatenate([speech1, floor(1.5), speech2, floor(2.0), speech1[: 16000 * 3]])
+    # 前置 1s 底噪（VAD 校准段）+ 语音 + 静音交替
+    mix = np.concatenate([floor(1.0), speech1, floor(1.5), speech2, floor(2.0), speech1[: 16000 * 3]])
     print(f"fixture: {len(mix)/16000:.1f}s from {len(wavs)} wavs ({os.path.dirname(wavs[0])})")
 
     pcm = (np.clip(mix, -1, 1) * 32767).astype(np.int16)

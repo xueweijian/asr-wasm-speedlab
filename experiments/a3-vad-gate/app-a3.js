@@ -27,6 +27,7 @@ function vadDecision(samples, now) {
   const db = 20 * Math.log10(rms + 1e-10);
   if (now - calStart < CAL_MS) { // 校准期：指数平滑噪声底
     noiseDb = noiseDb === -60 ? db : noiseDb * 0.95 + db * 0.05;
+    noiseDb = Math.min(noiseDb, -35); // 防呆：校准期撞上语音/设备AGC时别把门限抬上天
     M.vad.noiseDb = +noiseDb.toFixed(1);
     return false;
   }
