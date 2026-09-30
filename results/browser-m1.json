@@ -3,31 +3,34 @@
     "engine": "chromium",
     "headless": true,
     "fixture_s": 17.3,
-    "sha": "0c30fce",
-    "runner": "GitHub Actions 1000019473",
+    "sha": "5f07613",
+    "runner": "GitHub Actions 1000019476",
     "note": "Chrome假麦克风喂16k考卷; a0=对照组(官方ScriptProcessor路径)"
   },
   "apps": {
     "a0-reference": {
       "load": {
-        "recognizerInitMs": 1652.5
+        "recognizerInitMs": 830.6
       },
       "stream": {
         "app": "a0-reference",
         "ready": true,
         "load": {
-          "recognizerInitMs": 1652.5
+          "recognizerInitMs": 830.6
         },
         "stream": {
-          "audioSec": 0,
-          "feedMs": 0,
-          "decodeMs": 0,
-          "cbCount": 0,
+          "audioSec": 19.200000000000014,
+          "feedMs": 25.100000000180444,
+          "decodeMs": 938.3999999997031,
+          "cbCount": 75,
           "cbGapP95": 260.1,
-          "longTasks": 1,
-          "results": [],
-          "rtf": 0,
-          "text": ""
+          "longTasks": 2,
+          "results": [
+            "对我做了介绍啊我想说的是大家如果对我的研究感兴趣呢",
+            "重点地想谈三个问题首先呢就是这一轮全球金融动量的表现"
+          ],
+          "rtf": 0.0489,
+          "text": "对我做了介绍啊我想说的是大家如果对我的研究感兴趣呢重点地想谈三个问题首先呢就是这一轮全球金融动量的表现对我做了介绍啊我想说的是呢对我做了介绍"
         },
         "capture": {
           "contextRate": 16000
@@ -37,17 +40,17 @@
     "a1-lazy-cache": {
       "visit1": {
         "swRegisterMs": 0,
-        "visit1ToReadyMs": 2282,
+        "visit1ToReadyMs": 1285,
         "visit2ToReadyMs": null,
-        "recognizerInitMs": 1683.1,
-        "visit1Bytes": 37981,
+        "recognizerInitMs": 716.6,
+        "visit1Bytes": 54167,
         "visit2Bytes": null
       },
       "visit2": {
         "swRegisterMs": 0,
-        "visit1ToReadyMs": 1763,
+        "visit1ToReadyMs": 969,
         "visit2ToReadyMs": null,
-        "recognizerInitMs": 1326.8,
+        "recognizerInitMs": 548.8,
         "visit1Bytes": 0,
         "visit2Bytes": null
       },
@@ -56,24 +59,27 @@
         "ready": true,
         "load": {
           "swRegisterMs": 0,
-          "visit1ToReadyMs": 1763,
+          "visit1ToReadyMs": 969,
           "visit2ToReadyMs": null,
-          "recognizerInitMs": 1326.8,
+          "recognizerInitMs": 548.8,
           "visit1Bytes": 0,
           "visit2Bytes": null
         },
         "stream": {
-          "audioSec": 0,
-          "feedMs": 0,
-          "decodeMs": 0,
-          "cbCount": 0,
+          "audioSec": 19.200000000000014,
+          "feedMs": 24.400000000110595,
+          "decodeMs": 922.7000000000262,
+          "cbCount": 75,
           "cbGapP95": 260.1,
-          "longTasks": 1,
-          "results": [],
-          "rtf": 0,
-          "text": ""
+          "longTasks": 2,
+          "results": [
+            "那么我想说的是呢大家如果对我的研究感兴趣呢",
+            "重点地想谈三个问题首先呢就是这一轮全球金融动量的表现"
+          ],
+          "rtf": 0.0481,
+          "text": "那么我想说的是呢大家如果对我的研究感兴趣呢重点地想谈三个问题首先呢就是这一轮全球金融动量的表现对我做了介绍啊我想说的是呢对我做了介绍那么我想说的是"
         },
-        "_clickT0": 78.29999999998836,
+        "_clickT0": 66.09999999999127,
         "capture": {
           "contextRate": 16000
         }
@@ -81,25 +87,28 @@
     },
     "a2-worklet-16k": {
       "load": {
-        "recognizerInitMs": 1680
+        "recognizerInitMs": 770.3
       },
       "stream": {
         "app": "a2-worklet-16k",
         "ready": true,
         "load": {
-          "recognizerInitMs": 1680
+          "recognizerInitMs": 770.3
         },
         "stream": {
-          "audioSec": 0,
-          "feedMs": 0,
-          "decodeMs": 0,
-          "cbCount": 2687,
-          "blockCount": 335,
+          "audioSec": 19.712000000000014,
+          "feedMs": 29.900000001463923,
+          "decodeMs": 950.4999999997817,
+          "cbCount": 2469,
+          "blockCount": 308,
           "cbGapP95": 10.1,
           "longTasks": 2,
-          "results": [],
-          "rtf": 0,
-          "text": ""
+          "results": [
+            "那么我想说的是大家如果对我的研究感兴趣呢",
+            "重点地想谈三个问题首先呢这一轮全球金融动量的表现"
+          ],
+          "rtf": 0.0485,
+          "text": "那么我想说的是大家如果对我的研究感兴趣呢重点地想谈三个问题首先呢这一轮全球金融动量的表现对我做了介绍啊我想说的是对我做了介绍那么我想说的"
         },
         "capture": {
           "contextRate": 16000,
@@ -110,13 +119,13 @@
     },
     "a3-vad-gate": {
       "load": {
-        "recognizerInitMs": 1675.5
+        "recognizerInitMs": 708.2
       },
       "stream": {
         "app": "a3-vad-gate",
         "ready": true,
         "load": {
-          "recognizerInitMs": 1675.5
+          "recognizerInitMs": 708.2
         },
         "stream": {
           "audioSec": 19.200000000000014,
@@ -135,8 +144,8 @@
           "activeSec": 0,
           "idleSec": 19.200000000000014,
           "speechPct": 0,
-          "noiseDb": -10.1,
-          "thresholdDb": 1.9
+          "noiseDb": -10.3,
+          "thresholdDb": 1.7
         },
         "capture": {
           "contextRate": 16000
@@ -144,26 +153,5 @@
       }
     }
   },
-  "logs": [
-    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
-    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
-    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
-    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
-    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
-    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
-    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
-    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
-    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
-    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
-    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
-    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
-    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
-    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
-    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
-    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
-    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
-    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
-    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')",
-    "[a0-reference] pageerror: Cannot read properties of undefined (reading 'set')"
-  ]
+  "logs": []
 }
