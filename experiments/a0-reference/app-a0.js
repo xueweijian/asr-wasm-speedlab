@@ -17,7 +17,7 @@ function dump() { metricsEl.textContent = JSON.stringify(M, null, 1); }
 
 let lastResult = '', resultList = [];
 Module = {};
-Module.locateFile = (p, dir = '') => dir + p; // dir = wasm 资产所在目录（site 根）
+Module.locateFile = p => '../' + p; // 实验页在 /<app>/ 子路径，资产在站点根
 Module.setStatus = s => { if (s) statusEl.textContent = s; };
 Module.print = () => {};
 Module.printErr = () => {};

@@ -42,7 +42,7 @@ function vadDecision(samples, now) {
 
 let lastResult = '', resultList = [];
 Module = {};
-Module.locateFile = (p, dir = '') => dir + p;
+Module.locateFile = p => '../' + p; // 实验页在 /<app>/ 子路径，资产在站点根
 Module.setStatus = s => { if (s) statusEl.textContent = s; };
 Module.print = () => {};
 Module.printErr = () => {};

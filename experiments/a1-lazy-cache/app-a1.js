@@ -28,7 +28,7 @@ loadBtn.onclick = async () => {
   loadBtn.disabled = true;
   M._clickT0 = performance.now();
   try {
-    await navigator.serviceWorker.register('/asr-wasm-speedlab/sw.js');
+    await navigator.serviceWorker.register('../sw.js'); // 相对实验页 = 站点根 SW（scope 覆盖全站）
     await navigator.serviceWorker.ready;
     // 等 claim() 接管当前页（首次注册也立即生效）
     for (let i = 0; i < 60 && !navigator.serviceWorker.controller; i++) {
@@ -47,7 +47,7 @@ loadBtn.onclick = async () => {
 
 let lastResult = '', resultList = [];
 Module = {};
-Module.locateFile = (p, dir = '') => dir + p;
+Module.locateFile = p => '../' + p;
 Module.setStatus = s => { if (s && !M.ready) statusEl.textContent = s; };
 Module.print = () => {};
 Module.printErr = () => {};
