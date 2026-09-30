@@ -46,6 +46,7 @@ let lastMsgTime = 0;
 const msgGaps = [];
 
 function processBlock(samples, audioTime) {
+  if (!M.ready) return; // 模型未就绪：丢弃早期音频（autoplay 下渲染循环可能先于 runtime 启动）
   const now = performance.now();
   if (lastMsgTime) msgGaps.push(now - lastMsgTime);
   lastMsgTime = now;
