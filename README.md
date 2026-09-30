@@ -15,6 +15,18 @@
 2. **正确性门**：每实验过 CER 考卷才进排行榜
 3. **一实验 = 一分支 = 一个 Pages 活 demo**；成功 merge / 失败 revert
 
+## 排行榜（Chrome headless，18.3s 语音+静音混音考卷，Actions x86_64）
+
+| 实验 | RTF | 解码耗时 | 回调抖动P95 | 结论 |
+|---|---|---|---|---|
+| a0 对照（官方 ScriptProcessor） | 0.0576 | 1165ms | 260.1ms | 基线：17×实时 |
+| a1 懒加载+SW缓存 | 0.0564 | 1140ms | 260.1ms | 二访 0 字节 / ready 969ms（vs 1285ms）✅ |
+| a2 AudioWorklet 采集 | 0.0575 | 1183ms | **10.1ms** | 抖动 26× 改善，RTF 持平 ✅ |
+| a3 能量VAD门控 | **0.0405** | **819ms** | 260.1ms | 有效RTF -30%（speech 69.6% 检出正确）✅ |
+
+参照系：原生 CPU 单线程 RTF 0.020（49×）→ 浏览器 wasm 折损 ~2.9×，仍有 17× 实时余量。
+数据文件：`results/browser-m1.json`（自动考台产物）。
+
 ## 基线锚点
 
 - `results/native-baseline.json`：官方 sherpa-onnx 原生 CPU 推理 RTF（GitHub Actions `ubuntu-24.04-arm` runner，1/2/4 线程）
