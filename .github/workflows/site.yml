@@ -54,7 +54,7 @@ jobs:
           cd sherpa-onnx
           ./build-wasm-simd-asr.sh
 
-      - name: Build sherpa-onnx wasm (c1: aggressive size flags)
+      - name: "Build sherpa-onnx wasm (c1 - aggressive size flags)"
         continue-on-error: true   # 变体构建失败不拖累官方轮（c1 缺席则 bench 跳过）
         shell: bash
         run: |
