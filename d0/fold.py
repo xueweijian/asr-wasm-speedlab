@@ -57,6 +57,9 @@ def rand_for(vi, all_inputs, seed):
         else:
             shape.append(dims[-1] or 1)
     if elem == "FLOAT":
+        if is_fbank:
+            # log-mel scale ~[-20, +5]: random normal noise NaNs the CTC head
+            return (rng.random(shape).astype(np.float32) * 25.0) - 20.0
         return rng.standard_normal(shape).astype(np.float32) * 0.5
     if elem in ("INT64", "INT32"):
         return np.zeros(shape, dtype=np.int64 if elem == "INT64" else np.int32)
@@ -102,13 +105,22 @@ def main():
     worst = 0.0
     for a, b, out_vi in zip(o1, o2, m.graph.output):
         if a.dtype.kind == "f":
-            diff = np.abs(a.astype(np.float64) - b.astype(np.float64))
-            denom = np.maximum(np.abs(a.astype(np.float64)), 1e-9)
-            rel = float((diff / denom).max())
-            mad = float(diff.max())
-            worst = max(worst, mad)
-            report.append({"output": out_vi.name, "max_abs": mad, "max_rel": rel})
-            print(f"  parity {out_vi.name}: max_abs={mad:.3e} max_rel={rel:.3e}")
+            fa, fb = a.astype(np.float64), b.astype(np.float64)
+            na, nb = np.isnan(fa), np.isnan(fb)  # nan masks must match exactly
+            both_nan = int((na & nb).sum())
+            only_a, only_b = int((na & ~nb).sum()), int((nb & ~na).sum())
+            clean = ~na & ~nb
+            diff = np.abs(np.where(clean, fa - fb, 0.0))
+            denom = np.maximum(np.abs(np.where(clean, fa, 1.0)), 1e-9)
+            rel = float((diff / denom).max()) if clean.any() else 0.0
+            mad = float(diff.max()) if clean.any() else 0.0
+            nan_mismatch = only_a + only_b
+            worst = max(worst, mad, float("inf") if nan_mismatch else 0.0)
+            report.append({"output": out_vi.name, "max_abs": mad, "max_rel": rel,
+                           "nan_both": both_nan, "nan_only_orig": only_a,
+                           "nan_only_folded": only_b})
+            print(f"  parity {out_vi.name}: max_abs={mad:.3e} max_rel={rel:.3e} "
+                  f"nan(both/orig/folded)={both_nan}/{only_a}/{only_b}")
         else:
             eq = bool((a == b).all())
             report.append({"output": out_vi.name, "exact": eq})
