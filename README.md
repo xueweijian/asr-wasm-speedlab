@@ -26,10 +26,24 @@
 | a2 AudioWorklet 采集 | 0.0558 | 1152ms | **10.1ms** | 抖动 26× 改善，RTF 持平 ✅ |
 | a3 能量VAD门控 | **0.0394** | **797ms** | 260.1ms | 有效RTF -30%（speech 69.6% 检出正确）✅ |
 | a4 Worklet+VAD 合体（M1.5） | 0.0426 | 925ms | **10.1ms** | **双收益同持**：CPU -25% + 抖动 26×；320ms pre-roll 修好 a3 首字clip（"对我"完整检出）✅ |
+| c1 激进体积旗标 | 0.0424 | 917ms | 10.1ms | -Os/LTO/closure：RTF 持平，wasm gzip 仅 -0.4%——**证伪**（ORT 预编译 .a 占体积，LTO 够不着）|
+| c3 跳过类型嗅探 | 待 CI | — | — | 显式 modelType 跳过 GetModelType 嗅探 session：encoder 不再被解析两次。真机实测 recognizerInit **1010→507ms（-50%）** |
 
 参照系：原生 CPU 单线程 RTF 0.020（49×）→ 浏览器 wasm 折损 ~2.9×，仍有 17× 实时余量。
 数据文件：`results/browser-m1.json`（自动考台产物）。
 M1.5 备注：a4 的 CPU 收益（-25%）略低于纯 a3（-30%），差价 = pre-roll 额外补喂 1.7s 音频 + 64ms 细粒度门控的 onset 次数（9 次）开销——这是**首字不丢**的价钱，值。
+
+## 冷启动分解（C 轨 profile，Actions x86_64）
+
+| 阶段 | a4 | 说明 |
+|---|---|---|
+| 资产下载（localhost） | ~140ms | 真网络 21MB gzip 是大头 → a1 SW 缓存已解二访 |
+| wasm 编译 + runtime init | <100ms | Liftoff 够快 |
+| **recognizerInit（ORT session 创建）** | **~930ms** | 真敌人：encoder 21.6MB 被 GetModelType 嗅探 + 真 session **完整解析两次** |
+
+c3（跳嗅探）真机（Pixel 级 Android，Chrome）同缓存对照：1010ms → **507ms**。
+坑：zh-14M-2023-02-23 是 **zipformer v1**，modelType 填 'zipformer2' 会走错 ctor **挂死**（无报错）。
+c2（最小算子 ORT）进行中：算子清点见 `results/ops-inventory.json`（14m 35 算子/ctc 37 算子，全标准 ai.onnx，无 contrib/ml 依赖）。
 
 ## 基线锚点
 
