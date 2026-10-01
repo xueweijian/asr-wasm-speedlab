@@ -43,10 +43,13 @@ jobs:
           ls pkg/include/ | head -20
           # 合并全部静态库为单档（对齐 csukuangfj 单 libonnxruntime.a，规避链接顺序问题）
           # 每档独立解包 + 成员名加归档前缀，防同名 .o 静默覆盖
+          # 注意：必须收全 closure（onnx/protobuf/abseil 等），只收 libonnxruntime* 会缺 onnx::OpSchema 等符号
           mkdir -p /tmp/objs
           n=0
-          for a in $(find "$GITHUB_WORKSPACE/ort/build" -name 'libonnxruntime*.a'); do
-            d="/tmp/m$(basename $a .a)"; mkdir -p "$d"; (cd "$d" && ar x "$a")
+          echo "=== static lib inventory ==="
+          find "$GITHUB_WORKSPACE/ort/build" -name '*.a' | sort | tee /tmp/lib-inventory.txt | wc -l
+          for a in $(find "$GITHUB_WORKSPACE/ort/build" -name '*.a' | sort); do
+            d="/tmp/m$(basename $a .a)"; mkdir -p "$d"; (cd "$d" && emar x "$a" 2>/dev/null || ar x "$a")
             for o in "$d"/*.o; do
               [ -e "$o" ] || continue
               cp "$o" "/tmp/objs/$(basename $a .a)__$(basename "$o")"
