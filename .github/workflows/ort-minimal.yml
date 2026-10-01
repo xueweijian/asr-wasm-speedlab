@@ -55,7 +55,7 @@ jobs:
           done
           echo "merged object files: $n"
           ls /tmp/objs | head -5
-          (cd /tmp/objs && ar qc "$GITHUB_WORKSPACE/pkg/lib/libonnxruntime.a" *.o)
+          (cd /tmp/objs && ar rc "$GITHUB_WORKSPACE/pkg/lib/libonnxruntime.a" *.o && ranlib "$GITHUB_WORKSPACE/pkg/lib/libonnxruntime.a")
           ls -la "$GITHUB_WORKSPACE/pkg/lib/"
           cd $GITHUB_WORKSPACE/pkg && rm -f ../wasm/third_party/onnxruntime-wasm-static_lib-simd-1.28.2.zip && zip -qr ../wasm/third_party/onnxruntime-wasm-static_lib-simd-1.28.2.zip .
           cd $GITHUB_WORKSPACE && sha256sum wasm/third_party/onnxruntime-wasm-static_lib-simd-1.28.2.zip | tee wasm/third_party.sha256
