@@ -112,6 +112,11 @@ def main():
             for app in APPS:
                 if not os.path.isdir(os.path.join(args.site, app)):
                     continue
+                # 变体实验（本地资产）：glue 未产出时跳过，避免空转 180s 超时污染记录
+                if app in ("c1-minsize", "c2-minort") and not os.path.isfile(
+                        os.path.join(args.site, app, "sherpa-onnx-wasm-main-asr.js")):
+                    print(f"{app}: skipped (no local wasm assets)")
+                    continue
                 t0 = time.time()
                 results[app] = bench_app(browser, base, app, dur, logs)
                 print(f"{app}: {time.time()-t0:.0f}s -> "

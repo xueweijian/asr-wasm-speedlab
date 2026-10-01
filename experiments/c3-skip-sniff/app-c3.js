@@ -65,7 +65,7 @@ Module.onRuntimeInitialized = function () {
       numThreads: 1,
       provider: 'cpu',
       debug: 0,
-      modelType: 'zipformer2',
+      modelType: 'zipformer', // 14M-2023-02-23 是 v1 架构；填错（如 zipformer2）会走错 ctor 卡死
       modelingUnit: 'cjkchar',
       bpeVocab: '',
     },
