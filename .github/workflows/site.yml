@@ -71,6 +71,9 @@ jobs:
         run: |
           cd sherpa-onnx
           git checkout -- build-wasm-simd-asr.sh   # 恢复原版脚本，避免 c1 的 sed 残留
+          if ls ../site-assets/c2-minort/*.wasm >/dev/null 2>&1; then
+            echo "c2: Modal farm 预构建产物在库，跳过 CI 内链接"; exit 0
+          fi
           if [ ! -f ../wasm/third_party/onnxruntime-wasm-static_lib-simd-1.28.2.zip ]; then
             echo "c2 skipped: no minimal ORT lib in repo (run ort-minimal workflow first)"; exit 0
           fi
@@ -98,7 +101,13 @@ jobs:
             mkdir -p site/c1-minsize
             cp -r sherpa-onnx/build-wasm-minsize/install/bin/wasm/asr/* site/c1-minsize/
           fi
-          if [ -d sherpa-onnx/build-wasm-minort/install/bin/wasm/asr ]; then
+          if ls site-assets/c2-minort/*.wasm >/dev/null 2>&1; then
+            mkdir -p site/c2-minort
+            cp site-assets/c2-minort/* site/c2-minort/
+            # 模型 .data 不入库存（24MB×变体冗余）：与 a0 同输入同产物，从基线构建补齐
+            cp sherpa-onnx/build-wasm-simd-asr/install/bin/wasm/asr/*.data site/c2-minort/
+            echo "c2 assets: Modal farm 产物 + 基线 .data"
+          elif [ -d sherpa-onnx/build-wasm-minort/install/bin/wasm/asr ]; then
             mkdir -p site/c2-minort
             cp -r sherpa-onnx/build-wasm-minort/install/bin/wasm/asr/* site/c2-minort/
           fi
