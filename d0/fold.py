@@ -32,17 +32,30 @@ def stats_of(m):
             "initializer_bytes": init_bytes, "op_kinds": len(ops)}
 
 
-def rand_for(vi, seed):
+def rand_for(vi, all_inputs, seed):
+    """Streaming-contract-aware random feeds.
+
+    zipformer-ctc streaming inputs: x [N,T,80] fbank; cached_len/processed_lens
+    [N] int64; cached_avg/key/val/val2 [N,T_prev,D] float states (initially empty).
+    Unknown dims: batch->1, x's time->32, state time->0 (initial state).
+    """
     rng = np.random.default_rng(seed)
     t = vi.type.tensor_type
     elem = onnx.TensorProto.DataType.Name(t.elem_type)
-    # unknown/dynamic dims -> concrete: batch=1, time=8, else dim_value
+    dims = [d.dim_value if d.HasField("dim_value") else None for d in t.shape.dim]
+    is_fbank = elem == "FLOAT" and len(dims) == 3 and dims[2] == 80
     shape = []
-    for i, d in enumerate(t.shape.dim):
-        if d.HasField("dim_value") and d.dim_value > 0:
-            shape.append(d.dim_value)
+    for i, d in enumerate(dims):
+        if d is not None and d > 0:
+            shape.append(d)
+        elif i == 0:
+            shape.append(1)                      # batch
+        elif is_fbank and i == 1:
+            shape.append(32)                     # current-chunk frames
+        elif not is_fbank and i == 1:
+            shape.append(0)                      # initial state: T_prev = 0
         else:
-            shape.append(1 if i == 0 else 8)
+            shape.append(dims[-1] or 1)
     if elem == "FLOAT":
         return rng.standard_normal(shape).astype(np.float32) * 0.5
     if elem in ("INT64", "INT32"):
@@ -75,7 +88,12 @@ def main():
     s1 = ort.InferenceSession(MODEL, so, providers=["CPUExecutionProvider"])
     s2 = ort.InferenceSession(OUT, so, providers=["CPUExecutionProvider"])
 
-    feeds = {vi.name: rand_for(vi, seed=42 + i)
+    print("--- input table ---")
+    for vi in m.graph.input:
+        t = vi.type.tensor_type
+        dims = [d.dim_value if d.HasField("dim_value") else "?" for d in t.shape.dim]
+        print(f"  {vi.name}: {onnx.TensorProto.DataType.Name(t.elem_type)} {dims}")
+    feeds = {vi.name: rand_for(vi, m.graph.input, seed=42 + i)
              for i, vi in enumerate(m.graph.input)}
     o1 = s1.run(None, feeds)
     o2 = s2.run(None, feeds)
