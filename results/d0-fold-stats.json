@@ -1,0 +1,133 @@
+{
+ "model": "model.int8.onnx",
+ "before": {
+  "nodes": 7996,
+  "ops": {
+   "Constant": 2667,
+   "Exp": 77,
+   "Shape": 379,
+   "Unsqueeze": 561,
+   "Add": 594,
+   "Gather": 337,
+   "Conv": 54,
+   "Sub": 280,
+   "Mul": 777,
+   "Concat": 288,
+   "Max": 4,
+   "ConstantOfShape": 24,
+   "Abs": 4,
+   "Neg": 24,
+   "Log": 64,
+   "Slice": 294,
+   "Transpose": 171,
+   "Reshape": 174,
+   "DynamicQuantizeLinear": 200,
+   "MatMulInteger": 218,
+   "Cast": 350,
+   "Pow": 26,
+   "ReduceMean": 13,
+   "Equal": 66,
+   "Where": 102,
+   "Expand": 42,
+   "LessOrEqual": 1,
+   "Range": 24,
+   "MatMul": 60,
+   "Tile": 12,
+   "GatherElements": 12,
+   "Div": 42,
+   "Softmax": 12,
+   "Tanh": 12,
+   "Sigmoid": 24,
+   "ReduceSum": 6,
+   "LogSoftmax": 1
+  },
+  "initializers": 1077,
+  "initializer_bytes": 24718828,
+  "op_kinds": 37
+ },
+ "after": {
+  "nodes": 4713,
+  "ops": {
+   "Shape": 218,
+   "Unsqueeze": 409,
+   "Add": 588,
+   "Gather": 319,
+   "Conv": 54,
+   "Sub": 276,
+   "Mul": 727,
+   "Concat": 255,
+   "Max": 4,
+   "ConstantOfShape": 6,
+   "Abs": 4,
+   "Neg": 24,
+   "Exp": 64,
+   "Log": 64,
+   "Slice": 293,
+   "Transpose": 170,
+   "Reshape": 167,
+   "DynamicQuantizeLinear": 199,
+   "MatMulInteger": 216,
+   "Cast": 216,
+   "Pow": 26,
+   "ReduceMean": 13,
+   "Equal": 66,
+   "Where": 102,
+   "Expand": 30,
+   "LessOrEqual": 1,
+   "MatMul": 60,
+   "Tile": 12,
+   "GatherElements": 12,
+   "Softmax": 12,
+   "Tanh": 12,
+   "Div": 41,
+   "Sigmoid": 24,
+   "Range": 22,
+   "ReduceSum": 6,
+   "LogSoftmax": 1
+  },
+  "initializers": 923,
+  "initializer_bytes": 25147164,
+  "op_kinds": 36
+ },
+ "node_reduction": 0.4106,
+ "parity": [
+  {
+   "chunk": 0,
+   "shape": [
+    1,
+    16,
+    1000
+   ],
+   "max_abs": 0.0,
+   "nan_orig": 16000,
+   "nan_folded": 16000,
+   "nan_mask_mismatch": 0
+  },
+  {
+   "chunk": 1,
+   "shape": [
+    1,
+    16,
+    1000
+   ],
+   "max_abs": 0.0,
+   "nan_orig": 16000,
+   "nan_folded": 16000,
+   "nan_mask_mismatch": 0
+  },
+  {
+   "chunk": 2,
+   "shape": [
+    1,
+    16,
+    1000
+   ],
+   "max_abs": 0.0,
+   "nan_orig": 16000,
+   "nan_folded": 16000,
+   "nan_mask_mismatch": 0
+  }
+ ],
+ "tol": 0.0001,
+ "pass": true
+}
