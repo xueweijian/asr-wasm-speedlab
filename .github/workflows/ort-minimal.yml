@@ -80,7 +80,7 @@ jobs:
           # sherpa 链接期引用 onnxruntime::Env::Env() 官方库有、我们没有）。Env 无数据成员，
           # 空体定义与 = default 语义等价
           printf '#include "onnxruntime/core/common/common.h"\nnamespace onnxruntime { Env::Env() {} }\n' > /tmp/env_shim.cc
-          emcc -c /tmp/env_shim.cc -I"$GITHUB_WORKSPACE/ort/include" -flto -o /tmp/objs/libshim__env_ctor.o
+          emcc -c /tmp/env_shim.cc -I"$GITHUB_WORKSPACE/ort/include" -I"$GITHUB_WORKSPACE/ort/include/onnxruntime" -flto -o /tmp/objs/libshim__env_ctor.o
           # 诊断：确认 ctor 进入合并档符号表
           "$EMSDK/upstream/bin/llvm-nm" /tmp/objs/libshim__env_ctor.o | grep Env || true
           (cd /tmp/objs && emar rc "$GITHUB_WORKSPACE/pkg/lib/libonnxruntime.a" *.o && emranlib "$GITHUB_WORKSPACE/pkg/lib/libonnxruntime.a" && echo "members: $(emar t "$GITHUB_WORKSPACE/pkg/lib/libonnxruntime.a" | wc -l)")
