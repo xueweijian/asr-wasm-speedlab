@@ -1,0 +1,42 @@
+name: d0-fold
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['d0/fold.py']
+
+permissions:
+  contents: write
+
+jobs:
+  fold:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install onnx onnxsim onnxruntime numpy
+      - name: Fetch small-ctc model
+        run: |
+          curl -sSL -o ctc.tar.bz2 https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-small-ctc-zh-int8-2025-04-01.tar.bz2
+          tar xf ctc.tar.bz2 && rm -f ctc.tar.bz2
+          find . -name '*.onnx' -path '*ctc*' | head
+      - name: Fold + parity gate
+        run: |
+          M=$(find . -name 'model.onnx' -path '*ctc*' | head -1)
+          [ -n "$M" ] || { echo "model.onnx not found"; exit 1; }
+          python d0/fold.py "$M" /tmp/folded.onnx results/d0-fold-stats.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: folded-ctc
+          path: /tmp/folded.onnx
+          retention-days: 14
+      - name: Commit stats
+        run: |
+          git config user.name "bench-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add results/d0-fold-stats.json
+          git diff --cached --quiet && echo "no changes" || (git commit -m "d0: fold stats ${GITHUB_SHA::7}" && git pull --rebase && git push)

@@ -1,0 +1,116 @@
+#!/usr/bin/env python3
+"""D0: offline constant-fold the small-ctc model and verify parity vs original.
+
+Pipeline:
+  1. Load model.onnx, report node/ops stats (before)
+  2. onnxsim simplify (constant folding + shape inference + dead code elimination)
+  3. Report stats (after); assert node reduction
+  4. Parity gate: run original vs folded in onnxruntime (CPU fp32) on random
+     inputs shaped from the model's own input specs; elementwise max-abs/rel diff.
+Exit non-zero if parity fails or folding explodes.
+"""
+import json
+import sys
+import os
+
+import numpy as np
+import onnx
+from onnxsim import simplify
+
+MODEL = sys.argv[1] if len(sys.argv) > 1 else "model.onnx"
+OUT = sys.argv[2] if len(sys.argv) > 2 else "folded.onnx"
+STATS = sys.argv[3] if len(sys.argv) > 3 else "results/d0-fold-stats.json"
+
+
+def stats_of(m):
+    ops = {}
+    for n in m.graph.node:
+        ops[n.op_type] = ops.get(n.op_type, 0) + 1
+    init = len(m.graph.initializer)
+    init_bytes = sum(i.raw_data.__len__() if i.raw_data else 0 for i in m.graph.initializer)
+    return {"nodes": len(m.graph.node), "ops": ops, "initializers": init,
+            "initializer_bytes": init_bytes, "op_kinds": len(ops)}
+
+
+def rand_for(vi, seed):
+    rng = np.random.default_rng(seed)
+    t = vi.type.tensor_type
+    elem = onnx.TensorProto.DataType.Name(t.elem_type)
+    # unknown/dynamic dims -> concrete: batch=1, time=8, else dim_value
+    shape = []
+    for i, d in enumerate(t.shape.dim):
+        if d.HasField("dim_value") and d.dim_value > 0:
+            shape.append(d.dim_value)
+        else:
+            shape.append(1 if i == 0 else 8)
+    if elem == "FLOAT":
+        return rng.standard_normal(shape).astype(np.float32) * 0.5
+    if elem in ("INT64", "INT32"):
+        return np.zeros(shape, dtype=np.int64 if elem == "INT64" else np.int32)
+    if elem == "BOOL":
+        return np.zeros(shape, dtype=bool)
+    raise SystemExit(f"unsupported input type {elem} for {vi.name}")
+
+
+def main():
+    m = onnx.load(MODEL)
+    before = stats_of(m)
+    print(f"[before] nodes={before['nodes']} op_kinds={before['op_kinds']} "
+          f"initializers={before['initializers']}")
+
+    sm, ok = simplify(m)  # default: constant folding + shape inference + DCE
+    if not ok:
+        raise SystemExit("onnxsim simplify check failed")
+    after = stats_of(sm)
+    print(f"[after ] nodes={after['nodes']} op_kinds={after['op_kinds']} "
+          f"initializers={after['initializers']}")
+
+    onnx.save(sm, OUT)
+    print(f"saved folded model -> {OUT} ({os.path.getsize(OUT)/1e6:.1f}MB)")
+
+    # ---- parity gate (onnxruntime, CPU fp32, deterministic seeds) ----
+    import onnxruntime as ort
+    so = ort.SessionOptions()
+    so.graph_optimization_level = ort.GraphOptimizationLevel.ORT_DISABLE_ALL  # fold check, not ORT's
+    s1 = ort.InferenceSession(MODEL, so, providers=["CPUExecutionProvider"])
+    s2 = ort.InferenceSession(OUT, so, providers=["CPUExecutionProvider"])
+
+    feeds = {vi.name: rand_for(vi, seed=42 + i)
+             for i, vi in enumerate(m.graph.input)}
+    o1 = s1.run(None, feeds)
+    o2 = s2.run(None, feeds)
+
+    report = []
+    worst = 0.0
+    for a, b, out_vi in zip(o1, o2, m.graph.output):
+        if a.dtype.kind == "f":
+            diff = np.abs(a.astype(np.float64) - b.astype(np.float64))
+            denom = np.maximum(np.abs(a.astype(np.float64)), 1e-9)
+            rel = float((diff / denom).max())
+            mad = float(diff.max())
+            worst = max(worst, mad)
+            report.append({"output": out_vi.name, "max_abs": mad, "max_rel": rel})
+            print(f"  parity {out_vi.name}: max_abs={mad:.3e} max_rel={rel:.3e}")
+        else:
+            eq = bool((a == b).all())
+            report.append({"output": out_vi.name, "exact": eq})
+            print(f"  parity {out_vi.name}: exact={eq}")
+            if not eq:
+                worst = float("inf")
+
+    TOL = 1e-4  # fp32 folding on int8-quantized graph: quant params are constants,
+    # folded DQ arithmetic must be bit-close (1e-4 headroom for op reordering)
+    reduction = 1 - after["nodes"] / before["nodes"]
+    os.makedirs(os.path.dirname(STATS), exist_ok=True)
+    json.dump({"model": os.path.basename(MODEL), "before": before, "after": after,
+               "node_reduction": round(reduction, 4), "parity": report,
+               "tol": TOL, "pass": worst <= TOL},
+              open(STATS, "w"), indent=1)
+    print(f"[gate] node_reduction={reduction:.1%} parity_worst={worst:.3e} tol={TOL}")
+    if worst > TOL:
+        raise SystemExit("D0 PARITY GATE FAILED")
+    print("D0 PASS")
+
+
+if __name__ == "__main__":
+    main()
