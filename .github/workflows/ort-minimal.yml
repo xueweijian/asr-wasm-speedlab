@@ -35,14 +35,13 @@ jobs:
 
       - name: Package sherpa-consumable zip
         run: |
-          mkdir -p pkg/include pkg/lib
+          mkdir -p pkg/include pkg/lib wasm/third_party
           cp -r ort/include/onnxruntime pkg/include/
           find ort/build -name 'libonnxruntime*.a' -exec cp {} pkg/lib/ \;
           [ -n "$(ls pkg/lib/*.a 2>/dev/null)" ] || { echo "no static lib produced"; find ort/build -name '*.a' | head; exit 1; }
           ls -la pkg/lib/
           (cd pkg && zip -qr ../onnxruntime-wasm-static_lib-simd-1.28.2.zip .)
           sha256sum onnxruntime-wasm-static_lib-simd-1.28.2.zip | tee wasm/third_party.sha256
-          mkdir -p wasm/third_party
           mv onnxruntime-wasm-static_lib-simd-1.28.2.zip wasm/third_party/
           ls -la wasm/third_party/
 
