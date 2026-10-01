@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  actions: write   # 允许提交 zip 后自动触发 site.yml 完成 c2 认证
 
 jobs:
   build:
@@ -56,7 +57,7 @@ jobs:
           ls /tmp/objs | head -5
           (cd /tmp/objs && ar qc "$GITHUB_WORKSPACE/pkg/lib/libonnxruntime.a" *.o)
           ls -la "$GITHUB_WORKSPACE/pkg/lib/"
-          cd $GITHUB_WORKSPACE/pkg && zip -qr ../wasm/third_party/onnxruntime-wasm-static_lib-simd-1.28.2.zip .
+          cd $GITHUB_WORKSPACE/pkg && rm -f ../wasm/third_party/onnxruntime-wasm-static_lib-simd-1.28.2.zip && zip -qr ../wasm/third_party/onnxruntime-wasm-static_lib-simd-1.28.2.zip .
           cd $GITHUB_WORKSPACE && sha256sum wasm/third_party/onnxruntime-wasm-static_lib-simd-1.28.2.zip | tee wasm/third_party.sha256
           ls -la wasm/third_party/
 
@@ -66,3 +67,9 @@ jobs:
           git config user.email "bot@users.noreply.github.com"
           git add wasm/third_party/
           git diff --cached --quiet && echo "no changes" || (git commit -m "build: ort wasm minimal-op static lib (no contrib/ml ops) ${GITHUB_SHA::7}" && git pull --rebase && git push)
+
+      - name: Trigger site bench (c2 certification)
+        if: ${{ !cancelled() }}
+        run: gh workflow run site.yml
+        env:
+          GH_TOKEN: ${{ github.token }}
