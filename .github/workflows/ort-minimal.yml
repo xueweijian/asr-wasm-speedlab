@@ -36,13 +36,28 @@ jobs:
       - name: Package sherpa-consumable zip
         run: |
           mkdir -p pkg/include pkg/lib wasm/third_party
-          cp -r ort/include/onnxruntime pkg/include/
-          find ort/build -name 'libonnxruntime*.a' -exec cp {} pkg/lib/ \;
-          [ -n "$(ls pkg/lib/*.a 2>/dev/null)" ] || { echo "no static lib produced"; find ort/build -name '*.a' | head; exit 1; }
-          ls -la pkg/lib/
-          (cd pkg && zip -qr ../onnxruntime-wasm-static_lib-simd-1.28.2.zip .)
-          sha256sum onnxruntime-wasm-static_lib-simd-1.28.2.zip | tee wasm/third_party.sha256
-          mv onnxruntime-wasm-static_lib-simd-1.28.2.zip wasm/third_party/
+          # 扁平化公共头文件（对齐 csukuangfj 预编译包布局：sherpa 直接 include "onnxruntime_cxx_api.h"）
+          cp ort/include/onnxruntime/core/session/*.h pkg/include/
+          find ort/include -name 'onnxruntime_lite_custom_op.h' -o -name 'experimental_onnxruntime*.h' -o -name 'onnxruntime_ep_*.h' | xargs -r -I{} cp {} pkg/include/
+          ls pkg/include/ | head -20
+          # 合并全部静态库为单档（对齐 csukuangfj 单 libonnxruntime.a，规避链接顺序问题）
+          # 每档独立解包 + 成员名加归档前缀，防同名 .o 静默覆盖
+          mkdir -p /tmp/objs
+          n=0
+          for a in $(find "$GITHUB_WORKSPACE/ort/build" -name 'libonnxruntime*.a'); do
+            d="/tmp/m$(basename $a .a)"; mkdir -p "$d"; (cd "$d" && ar x "$a")
+            for o in "$d"/*.o; do
+              [ -e "$o" ] || continue
+              cp "$o" "/tmp/objs/$(basename $a .a)__$(basename "$o")"
+              n=$((n+1))
+            done
+          done
+          echo "merged object files: $n"
+          ls /tmp/objs | head -5
+          (cd /tmp/objs && ar qc "$GITHUB_WORKSPACE/pkg/lib/libonnxruntime.a" *.o)
+          ls -la "$GITHUB_WORKSPACE/pkg/lib/"
+          cd $GITHUB_WORKSPACE/pkg && zip -qr ../wasm/third_party/onnxruntime-wasm-static_lib-simd-1.28.2.zip .
+          cd $GITHUB_WORKSPACE && sha256sum wasm/third_party/onnxruntime-wasm-static_lib-simd-1.28.2.zip | tee wasm/third_party.sha256
           ls -la wasm/third_party/
 
       - name: Commit artifact
