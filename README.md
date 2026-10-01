@@ -27,7 +27,8 @@
 | a3 能量VAD门控 | **0.0394** | **797ms** | 260.1ms | 有效RTF -30%（speech 69.6% 检出正确）✅ |
 | a4 Worklet+VAD 合体（M1.5） | 0.0426 | 925ms | **10.1ms** | **双收益同持**：CPU -25% + 抖动 26×；320ms pre-roll 修好 a3 首字clip（"对我"完整检出）✅ |
 | c1 激进体积旗标 | 0.0424 | 917ms | 10.1ms | -Os/LTO/closure：RTF 持平，wasm gzip 仅 -0.4%——**证伪**（ORT 预编译 .a 占体积，LTO 够不着）|
-| c3 跳过类型嗅探 | 待 CI | — | — | 显式 modelType 跳过 GetModelType 嗅探 session：encoder 不再被解析两次。真机实测 recognizerInit **1010→507ms（-50%）** |
+| c3 跳过类型嗅探 | 0.0365 | 788ms | 10.1ms | recogInit **706→477ms（-32%）**、nav→ready -27%，RTF 零回归；真机同缓存 1010→507ms（**-50%**）✅ |
+| c4 全家桶（交付页） | 认证中 | — | — | a4×c3×a1 三合一：非假设检验，最终栈定型 |
 
 参照系：原生 CPU 单线程 RTF 0.020（49×）→ 浏览器 wasm 折损 ~2.9×，仍有 17× 实时余量。
 数据文件：`results/browser-m1.json`（自动考台产物）。
