@@ -59,11 +59,16 @@ fixtures wav ──> ORT fp32 参考输出（真值锚）    ├─ wgsl-runtime
 
 ## 5. 开工前搜索清单（动手前先搜，工作铁律 #4）
 
-- [ ] fluidaudio-web 源码：3× 数据的测法、内核池结构、QDQ 处理方式
-- [ ] onnx 常量折叠现成轮子：onnxruntime optimizer（Python offline）能否直接出折叠图（`onnxruntime.tools` / `onnxsim`）
-- [ ] WebGPU matmul_int8 先例：int8 在 WGSL 的表达（u32 打包 4×i8 + 手动解包乘加）
-- [ ] zipformer CTC 流式语义：sherpa csrc 里 small-ctc 的 chunk 边界与 state 传递（online-ctc 相关源码）
-- [ ] Android Chrome WebGPU 现状（2026）：默认开启版本、adapter 丢弃率
+**侦察结论（2026-10-01 已完成首轮）**：
+- ✅ **反灯塔实锤（佐证 D 轨赌注）**：gpuweb #5292——4090 上 ort-web WebGPU EP 跑 EfficientNet 80→1100ms（比 WASM **慢 14×**）；HF 官方 webgpu-embedding-benchmark 同向（WASM 快 6×）。Google 维护者 Kangz 定性：算子回退软件 + onnxruntime 调度问题，**不是 WebGPU 慢**。→ 小模型上 ORT WebGPU EP 是死路，手写融合内核才是活路。
+- ✅ **正灯塔**：Xenova whisper-webgpu（手写 WGSL 全模型内核，74M whisper-base 实时转写）= D 轨同构先例；WONNX（Rust ONNX→WGSL 编译器）证明 ONNX→WGSL 路径可行，其算子覆盖表可抄作业。
+- ⬜ fluidaudio-web 原始仓库未直接搜到（3× 数据来自此前调研），开工时再定位或以 whisper-webgpu 替代为灯塔
+- ⬜ onnx 常量折叠现成轮子：`onnxsim` / onnxruntime Python offline optimizer（`onnxruntime.transformers` optimizer）能否直接出折叠图 → D0 第一步先试轮子再自写
+- ⬜ WebGPU int8 matmul 先例：u32 打包 4×i8 + 手动解包乘加（whisper-webgpu 用 fp16，int8 先例要在 WONNX/web-dnn 里找）
+- ⬜ zipformer CTC 流式语义：sherpa csrc online-ctc chunk 边界与 state 传递（D0 验证内核表可表达）
+- ⬜ Android Chrome WebGPU 现状（2026）：默认开启版本、adapter 丢弃率、真机首测前必须摸清
+
+**新增关键预判**：ort-web WebGPU EP 的死因（逐算子 CPU 回退 + dispatch 开销）对 D 轨的启示——折叠后内核表必须**激进的算子融合**（elementwise 全并入邻居、DQ+MatMulInteger 一体化），把每 chunk dispatch 数压到几十以内，否则 WebGPU 的每 dispatch 开销会重演 ORT 悲剧。
 
 ## 6. 里程碑定义
 
