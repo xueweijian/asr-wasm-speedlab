@@ -28,11 +28,12 @@ jobs:
 
       - name: Build ORT wasm (simd, no contrib/ml ops)
         run: |
+          set -o pipefail
           cd ort
           pip install -q -r requirements.txt
-          ./build.sh --build_wasm --enable_wasm_simd \
+          ./build.sh --build_wasm --enable_wasm_simd --parallel 4 \
             --disable_ml_ops --disable_contrib_ops \
-            --skip_tests --config Release 2>&1 | tail -15
+            --skip_tests --config Release 2>&1 | tail -80
 
       - name: Package sherpa-consumable zip
         run: |
@@ -69,10 +70,10 @@ jobs:
           git config user.name "bench-bot"
           git config user.email "bot@users.noreply.github.com"
           git add wasm/third_party/
-          git diff --cached --quiet && echo "no changes" || (git commit -m "build: ort wasm minimal-op static lib (no contrib/ml ops) ${GITHUB_SHA::7}" && git pull --rebase && git push)
+          git diff --cached --quiet && echo "no changes" || (git commit -m "build: ort wasm minimal-op static lib (no contrib/ml ops) ${GITHUB_SHA::7}" && git pull --rebase -X ours && git push)
 
       - name: Trigger site bench (c2 certification)
-        if: ${{ !cancelled() }}
+        if: ${{ success() }}
         run: gh workflow run site.yml
         env:
           GH_TOKEN: ${{ github.token }}

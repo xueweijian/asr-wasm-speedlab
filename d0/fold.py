@@ -110,7 +110,9 @@ def main():
             if n == "new_" + i or n == i:
                 by_out[n] = i
 
-    state1, state2 = {}, {}
+    state1 = {vi.name: rand_for(vi, m.graph.input, seed=7)
+              for vi in m.graph.input if vi.name != "x"}
+    state2 = dict(state1)
     report, worst, NCHUNK = [], 0.0, 3
     for c in range(NCHUNK):
         x = rand_for(m.graph.input[0], m.graph.input, seed=100 + c)  # fresh chunk
