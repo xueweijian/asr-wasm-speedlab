@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['d0/fold.py']
+    paths: ['d0/fold.py', '.github/workflows/d0-fold.yml']
 
 permissions:
   contents: write
@@ -26,8 +26,9 @@ jobs:
           find . -name '*.onnx' -path '*ctc*' | head
       - name: Fold + parity gate
         run: |
-          M=$(find . -name 'model.onnx' -path '*ctc*' | head -1)
-          [ -n "$M" ] || { echo "model.onnx not found"; exit 1; }
+          M=$(find . -name 'model*.onnx' -path '*ctc*' | head -1)
+          [ -n "$M" ] || { echo "ctc model not found"; exit 1; }
+          echo "model: $M"
           python d0/fold.py "$M" /tmp/folded.onnx results/d0-fold-stats.json
       - uses: actions/upload-artifact@v4
         with:
