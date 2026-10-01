@@ -3,42 +3,42 @@
     "engine": "chromium",
     "headless": true,
     "fixture_s": 18.3,
-    "sha": "93b3909",
-    "runner": "GitHub Actions 1000019598",
+    "sha": "a72c5f1",
+    "runner": "GitHub Actions 1000019605",
     "note": "Chrome假麦克风喂16k考卷; a0=对照组(官方ScriptProcessor路径)"
   },
   "apps": {
     "a0-reference": {
       "load": {
-        "recognizerInitMs": 710.5,
-        "readySinceNav": 1147
+        "recognizerInitMs": 702.3,
+        "readySinceNav": 1071
       },
       "resources": [
         {
           "name": "sherpa-onnx-asr.js",
-          "start": 10,
-          "dur": 9,
+          "start": 11,
+          "dur": 16,
           "tx": 54167,
           "dec": 53867
         },
         {
           "name": "sherpa-onnx-wasm-main-asr.js",
           "start": 11,
-          "dur": 10,
+          "dur": 16,
           "tx": 82982,
           "dec": 82682
         },
         {
           "name": "sherpa-onnx-wasm-main-asr.data",
-          "start": 39,
-          "dur": 383,
+          "start": 36,
+          "dur": 267,
           "tx": 25357958,
           "dec": 25357658
         },
         {
           "name": "sherpa-onnx-wasm-main-asr.wasm",
-          "start": 43,
-          "dur": 338,
+          "start": 39,
+          "dur": 210,
           "tx": 13420253,
           "dec": 13419953
         }
@@ -47,23 +47,23 @@
         "app": "a0-reference",
         "ready": true,
         "load": {
-          "recognizerInitMs": 710.5,
-          "readySinceNav": 1147
+          "recognizerInitMs": 702.3,
+          "readySinceNav": 1071
         },
         "stream": {
           "audioSec": 20.224000000000014,
-          "feedMs": 27.7000000000844,
-          "decodeMs": 941.9999999998254,
+          "feedMs": 26.499999999898137,
+          "decodeMs": 1034.5999999999622,
           "cbCount": 79,
           "cbGapP95": 260.1,
-          "longTasks": 2,
+          "longTasks": 4,
           "results": [
-            "对我做了介绍那么我想说的是大家如果对我的研究感兴趣呢",
-            "重点来想看三个问题首先呢就是这一轮全球金融动量的表现",
-            "对我做了介绍我想说的是"
+            "对我做了介绍那么我想说的大家如果对我的研究感兴趣呢",
+            "重点想谈三个问题首先呢就是这一轮全球金融动能量的表现",
+            "对我做了介绍啊我想说的是呢"
           ],
-          "rtf": 0.0466,
-          "text": "对我做了介绍那么我想说的是大家如果对我的研究感兴趣呢重点来想看三个问题首先呢就是这一轮全球金融动量的表现对我做了介绍我想说的是对我做了介绍"
+          "rtf": 0.0512,
+          "text": "对我做了介绍那么我想说的大家如果对我的研究感兴趣呢重点想谈三个问题首先呢就是这一轮全球金融动能量的表现对我做了介绍啊我想说的是呢对我做了介绍"
         },
         "capture": {
           "contextRate": 16000
@@ -73,50 +73,50 @@
     "a1-lazy-cache": {
       "visit1": {
         "swRegisterMs": 0,
-        "visit1ToReadyMs": 1285,
+        "visit1ToReadyMs": 1248,
         "visit2ToReadyMs": null,
-        "recognizerInitMs": 721.9,
+        "recognizerInitMs": 692.5,
         "visit1Bytes": 54167,
         "visit2Bytes": null,
-        "readySinceNav": 1050
+        "readySinceNav": 1015
       },
       "visit2": {
         "swRegisterMs": 0,
-        "visit1ToReadyMs": 984,
+        "visit1ToReadyMs": 937,
         "visit2ToReadyMs": null,
-        "recognizerInitMs": 566.6,
+        "recognizerInitMs": 521.5,
         "visit1Bytes": 0,
         "visit2Bytes": null,
-        "readySinceNav": 747
+        "readySinceNav": 707
       },
       "stream": {
         "app": "a1-lazy-cache",
         "ready": true,
         "load": {
           "swRegisterMs": 0,
-          "visit1ToReadyMs": 984,
+          "visit1ToReadyMs": 937,
           "visit2ToReadyMs": null,
-          "recognizerInitMs": 566.6,
+          "recognizerInitMs": 521.5,
           "visit1Bytes": 0,
           "visit2Bytes": null,
-          "readySinceNav": 747
+          "readySinceNav": 707
         },
         "stream": {
           "audioSec": 20.224000000000014,
-          "feedMs": 28.300000000279397,
-          "decodeMs": 962.0000000000291,
+          "feedMs": 26.700000000957516,
+          "decodeMs": 926.699999999677,
           "cbCount": 79,
           "cbGapP95": 260.1,
           "longTasks": 2,
           "results": [
             "对我做了介绍啊那么我想说的是大家如果对我的研究感兴趣呢",
-            "重点想谈三个问题首先呢就是这一轮全球金融动呢表现",
-            "对我做了介绍啊我想说的是"
+            "想看三个问题首先呢就是这一轮全球金融动量的表现",
+            "对我做了介绍我想说的是"
           ],
-          "rtf": 0.0476,
-          "text": "对我做了介绍啊那么我想说的是大家如果对我的研究感兴趣呢重点想谈三个问题首先呢就是这一轮全球金融动呢表现对我做了介绍啊我想说的是对我做了介绍"
+          "rtf": 0.0458,
+          "text": "对我做了介绍啊那么我想说的是大家如果对我的研究感兴趣呢想看三个问题首先呢就是这一轮全球金融动量的表现对我做了介绍我想说的是对我做了介绍"
         },
-        "_clickT0": 63.30000000000291,
+        "_clickT0": 70.19999999999709,
         "capture": {
           "contextRate": 16000
         }
@@ -124,28 +124,93 @@
     },
     "a2-worklet-16k": {
       "load": {
-        "recognizerInitMs": 699.3,
-        "readySinceNav": 835
+        "recognizerInitMs": 721.5,
+        "readySinceNav": 860
       },
       "resources": [
         {
           "name": "sherpa-onnx-asr.js",
-          "start": 6,
-          "dur": 7,
+          "start": 5,
+          "dur": 6,
           "tx": 54167,
           "dec": 53867
         },
         {
           "name": "sherpa-onnx-wasm-main-asr.js",
-          "start": 7,
+          "start": 5,
+          "dur": 7,
+          "tx": 82982,
+          "dec": 82682
+        },
+        {
+          "name": "sherpa-onnx-wasm-main-asr.data",
+          "start": 21,
+          "dur": 108,
+          "tx": 25357958,
+          "dec": 25357658
+        },
+        {
+          "name": "sherpa-onnx-wasm-main-asr.wasm",
+          "start": 24,
+          "dur": 63,
+          "tx": 13420253,
+          "dec": 13419953
+        }
+      ],
+      "stream": {
+        "app": "a2-worklet-16k",
+        "ready": true,
+        "load": {
+          "recognizerInitMs": 721.5,
+          "readySinceNav": 860
+        },
+        "stream": {
+          "audioSec": 21.568000000000016,
+          "feedMs": 31.70000000137952,
+          "decodeMs": 1005.8999999995576,
+          "cbCount": 2696,
+          "blockCount": 337,
+          "cbGapP95": 10.1,
+          "longTasks": 2,
+          "results": [
+            "对我做了介绍啊那么我想说的是大家如果对我的研究感兴趣呢",
+            "重点地想探三个问题首先呢就是这一轮全球金融动量的表现",
+            "对我做了介绍那么我想说的是呢"
+          ],
+          "rtf": 0.0464,
+          "text": "对我做了介绍啊那么我想说的是大家如果对我的研究感兴趣呢重点地想探三个问题首先呢就是这一轮全球金融动量的表现对我做了介绍那么我想说的是呢对我做了介绍"
+        },
+        "capture": {
+          "contextRate": 16000,
+          "quantum": 128,
+          "chunk": 1024
+        }
+      }
+    },
+    "a3-vad-gate": {
+      "load": {
+        "recognizerInitMs": 695.3,
+        "readySinceNav": 839
+      },
+      "resources": [
+        {
+          "name": "sherpa-onnx-asr.js",
+          "start": 6,
           "dur": 8,
+          "tx": 54167,
+          "dec": 53867
+        },
+        {
+          "name": "sherpa-onnx-wasm-main-asr.js",
+          "start": 6,
+          "dur": 7,
           "tx": 82982,
           "dec": 82682
         },
         {
           "name": "sherpa-onnx-wasm-main-asr.data",
           "start": 24,
-          "dur": 101,
+          "dur": 107,
           "tx": 25357958,
           "dec": 25357658
         },
@@ -158,96 +223,31 @@
         }
       ],
       "stream": {
-        "app": "a2-worklet-16k",
-        "ready": true,
-        "load": {
-          "recognizerInitMs": 699.3,
-          "readySinceNav": 835
-        },
-        "stream": {
-          "audioSec": 20.736000000000015,
-          "feedMs": 29.199999998993007,
-          "decodeMs": 970.8000000002794,
-          "cbCount": 2593,
-          "blockCount": 324,
-          "cbGapP95": 10.1,
-          "longTasks": 2,
-          "results": [
-            "对我做了介绍那么我想说的是大家如果对我的研究感兴趣呢",
-            "重点地想看三个问题首先呢就是这一轮全球金融动量的表现",
-            "对我做了介绍啊我想说的是呢"
-          ],
-          "rtf": 0.0472,
-          "text": "对我做了介绍那么我想说的是大家如果对我的研究感兴趣呢重点地想看三个问题首先呢就是这一轮全球金融动量的表现对我做了介绍啊我想说的是呢对我做了介绍"
-        },
-        "capture": {
-          "contextRate": 16000,
-          "quantum": 128,
-          "chunk": 1024
-        }
-      }
-    },
-    "a3-vad-gate": {
-      "load": {
-        "recognizerInitMs": 709.9,
-        "readySinceNav": 856
-      },
-      "resources": [
-        {
-          "name": "sherpa-onnx-asr.js",
-          "start": 8,
-          "dur": 7,
-          "tx": 54167,
-          "dec": 53867
-        },
-        {
-          "name": "sherpa-onnx-wasm-main-asr.js",
-          "start": 9,
-          "dur": 6,
-          "tx": 82982,
-          "dec": 82682
-        },
-        {
-          "name": "sherpa-onnx-wasm-main-asr.data",
-          "start": 26,
-          "dur": 56,
-          "tx": 25357958,
-          "dec": 25357658
-        },
-        {
-          "name": "sherpa-onnx-wasm-main-asr.wasm",
-          "start": 29,
-          "dur": 88,
-          "tx": 13420253,
-          "dec": 13419953
-        }
-      ],
-      "stream": {
         "app": "a3-vad-gate",
         "ready": true,
         "load": {
-          "recognizerInitMs": 709.9,
-          "readySinceNav": 856
+          "recognizerInitMs": 695.3,
+          "readySinceNav": 839
         },
         "stream": {
           "audioSec": 20.224000000000014,
-          "feedMs": 19.399999999353895,
-          "decodeMs": 725.800000000163,
+          "feedMs": 19.799999999377178,
+          "decodeMs": 722.9000000001397,
           "cbCount": 79,
           "cbGapP95": 260.1,
           "longTasks": 2,
           "results": [],
-          "rtf": 0.0359,
-          "activeRtf": 0.0481,
-          "text": "我做了介绍啊我想说的是大家如果对我的研究感兴趣呢动点想谈三个问题首先呢就是这一轮全球金融动量的表现对我做了介绍那么我想说的是呢对我做了介绍"
+          "rtf": 0.0357,
+          "activeRtf": 0.0479,
+          "text": "我做了介绍啊那么我想说的是大家如果对我的研究感兴趣呢重点想谈三个问题首先呢就是这一轮全球金融动呢表现对我做了介绍那么我想说的是呢对我做了介绍"
         },
         "vad": {
           "mode": "energy",
           "activeSec": 15.104000000000012,
           "idleSec": 5.120000000000003,
           "speechPct": 74.7,
-          "noiseDb": -60.9,
-          "thresholdDb": -48.9
+          "noiseDb": -60.7,
+          "thresholdDb": -48.7
         },
         "capture": {
           "contextRate": 16000
@@ -256,8 +256,8 @@
     },
     "a4-worklet-vad": {
       "load": {
-        "recognizerInitMs": 710.5,
-        "readySinceNav": 853
+        "recognizerInitMs": 695.3,
+        "readySinceNav": 873
       },
       "resources": [
         {
@@ -269,22 +269,22 @@
         },
         {
           "name": "sherpa-onnx-wasm-main-asr.js",
-          "start": 6,
-          "dur": 7,
+          "start": 7,
+          "dur": 5,
           "tx": 82982,
           "dec": 82682
         },
         {
           "name": "sherpa-onnx-wasm-main-asr.data",
-          "start": 25,
-          "dur": 106,
+          "start": 58,
+          "dur": 98,
           "tx": 25357958,
           "dec": 25357658
         },
         {
           "name": "sherpa-onnx-wasm-main-asr.wasm",
-          "start": 28,
-          "dur": 51,
+          "start": 61,
+          "dur": 43,
           "tx": 13420253,
           "dec": 13419953
         }
@@ -293,33 +293,31 @@
         "app": "a4-worklet-vad",
         "ready": true,
         "load": {
-          "recognizerInitMs": 710.5,
-          "readySinceNav": 853
+          "recognizerInitMs": 695.3,
+          "readySinceNav": 873
         },
         "stream": {
           "audioSec": 20.736000000000015,
-          "feedMs": 26.000000001193257,
-          "decodeMs": 819.5999999996566,
-          "cbCount": 2596,
+          "feedMs": 23.20000000100117,
+          "decodeMs": 769.2000000002445,
+          "cbCount": 2592,
           "blockCount": 324,
           "cbGapP95": 10.1,
           "longTasks": 2,
-          "results": [
-            "对我做了介绍那么我想说的是大家如果对我的研究感兴趣呢"
-          ],
-          "rtf": 0.0396,
+          "results": [],
+          "rtf": 0.0365,
           "activeRtf": 0.0534,
-          "text": "对我做了介绍那么我想说的是大家如果对我的研究感兴趣呢重点地想谈三个问题首先呢这一轮全球金融动量的表现对我做了介绍那么我想说的是呢对我做了介绍"
+          "text": "对我做了介绍那么我想说的是呢大家如果对我的研究感兴趣呢重点想谈三个问题首先呢就是这一轮全球金融动量的表现对我做了介绍那么我想说的是对我"
         },
         "vad": {
           "mode": "energy+preroll",
-          "activeSec": 15.488000000000012,
-          "idleSec": 5.248000000000004,
-          "speechPct": 74.7,
-          "noiseDb": -62.8,
-          "thresholdDb": -50.8,
-          "onsets": 5,
-          "prerollFedSec": 1.3440000000000007
+          "activeSec": 14.336000000000011,
+          "idleSec": 6.400000000000005,
+          "speechPct": 69.1,
+          "noiseDb": -54.9,
+          "thresholdDb": -42.9,
+          "onsets": 6,
+          "prerollFedSec": 1.4720000000000009
         },
         "capture": {
           "contextRate": 16000,
@@ -330,156 +328,8 @@
     },
     "c1-minsize": {
       "load": {
-        "recognizerInitMs": 707.6,
-        "readySinceNav": 852
-      },
-      "resources": [
-        {
-          "name": "sherpa-onnx-asr.js",
-          "start": 6,
-          "dur": 7,
-          "tx": 54167,
-          "dec": 53867
-        },
-        {
-          "name": "sherpa-onnx-wasm-main-asr.js",
-          "start": 6,
-          "dur": 7,
-          "tx": 38762,
-          "dec": 38462
-        },
-        {
-          "name": "sherpa-onnx-wasm-main-asr.data",
-          "start": 23,
-          "dur": 102,
-          "tx": 25357958,
-          "dec": 25357658
-        },
-        {
-          "name": "sherpa-onnx-wasm-main-asr.wasm",
-          "start": 25,
-          "dur": 53,
-          "tx": 13379606,
-          "dec": 13379306
-        }
-      ],
-      "stream": {
-        "app": "c1-minsize",
-        "ready": true,
-        "load": {
-          "recognizerInitMs": 707.6,
-          "readySinceNav": 852
-        },
-        "stream": {
-          "audioSec": 20.736000000000015,
-          "feedMs": 25.50000000107684,
-          "decodeMs": 802.3999999997905,
-          "cbCount": 2594,
-          "blockCount": 324,
-          "cbGapP95": 10.1,
-          "longTasks": 2,
-          "results": [
-            "对我做了介绍那么我想说的是大家如果对我的研究感兴趣呢"
-          ],
-          "rtf": 0.0382,
-          "activeRtf": 0.0515,
-          "text": "对我做了介绍那么我想说的是大家如果对我的研究感兴趣呢重点地想谈三个问题首先呢这一轮全球金融动量的表现对我做了介绍那么我想说的是呢对我做了介绍"
-        },
-        "vad": {
-          "mode": "energy+preroll",
-          "activeSec": 15.488000000000012,
-          "idleSec": 5.248000000000004,
-          "speechPct": 74.7,
-          "noiseDb": -63.5,
-          "thresholdDb": -51.5,
-          "onsets": 5,
-          "prerollFedSec": 1.3440000000000007
-        },
-        "capture": {
-          "contextRate": 16000,
-          "quantum": 128,
-          "chunk": 1024
-        }
-      }
-    },
-    "c3-skip-sniff": {
-      "load": {
-        "recognizerInitMs": 470.9,
-        "readySinceNav": 609
-      },
-      "resources": [
-        {
-          "name": "sherpa-onnx-asr.js",
-          "start": 7,
-          "dur": 7,
-          "tx": 54167,
-          "dec": 53867
-        },
-        {
-          "name": "sherpa-onnx-wasm-main-asr.js",
-          "start": 7,
-          "dur": 7,
-          "tx": 82982,
-          "dec": 82682
-        },
-        {
-          "name": "sherpa-onnx-wasm-main-asr.data",
-          "start": 24,
-          "dur": 99,
-          "tx": 25357958,
-          "dec": 25357658
-        },
-        {
-          "name": "sherpa-onnx-wasm-main-asr.wasm",
-          "start": 27,
-          "dur": 51,
-          "tx": 13420253,
-          "dec": 13419953
-        }
-      ],
-      "stream": {
-        "app": "c3-skip-sniff",
-        "ready": true,
-        "load": {
-          "recognizerInitMs": 470.9,
-          "readySinceNav": 609
-        },
-        "stream": {
-          "audioSec": 20.672000000000015,
-          "feedMs": 23.90000000107102,
-          "decodeMs": 779.3999999995867,
-          "cbCount": 2590,
-          "blockCount": 323,
-          "cbGapP95": 10.1,
-          "longTasks": 2,
-          "results": [
-            "对我做了介绍那么我想说的是呢大家如果对我的研究感兴趣呢"
-          ],
-          "rtf": 0.0378,
-          "activeRtf": 0.0516,
-          "text": "对我做了介绍那么我想说的是呢大家如果对我的研究感兴趣呢重点想谈三个问题首先呢就是这一轮全球金融动的表现对我做了介绍那么我想说的是对我做了介绍"
-        },
-        "vad": {
-          "mode": "energy+preroll",
-          "activeSec": 15.232000000000012,
-          "idleSec": 5.440000000000004,
-          "speechPct": 73.7,
-          "noiseDb": -63.3,
-          "thresholdDb": -51.3,
-          "onsets": 5,
-          "prerollFedSec": 1.3440000000000007
-        },
-        "capture": {
-          "contextRate": 16000,
-          "quantum": 128,
-          "chunk": 1024
-        }
-      }
-    },
-    "c4-fullstack": {
-      "load": {
-        "recognizerInitMs": 476.2,
-        "readySinceNav": 664
+        "recognizerInitMs": 692,
+        "readySinceNav": 835
       },
       "resources": [
         {
@@ -492,21 +342,167 @@
         {
           "name": "sherpa-onnx-wasm-main-asr.js",
           "start": 6,
-          "dur": 7,
-          "tx": 82982,
-          "dec": 82682
+          "dur": 8,
+          "tx": 38762,
+          "dec": 38462
         },
         {
           "name": "sherpa-onnx-wasm-main-asr.data",
           "start": 23,
-          "dur": 156,
+          "dur": 105,
           "tx": 25357958,
           "dec": 25357658
         },
         {
           "name": "sherpa-onnx-wasm-main-asr.wasm",
-          "start": 26,
-          "dur": 107,
+          "start": 25,
+          "dur": 57,
+          "tx": 13379606,
+          "dec": 13379306
+        }
+      ],
+      "stream": {
+        "app": "c1-minsize",
+        "ready": true,
+        "load": {
+          "recognizerInitMs": 692,
+          "readySinceNav": 835
+        },
+        "stream": {
+          "audioSec": 21.440000000000015,
+          "feedMs": 24.999999997089617,
+          "decodeMs": 782.0000000003783,
+          "cbCount": 2683,
+          "blockCount": 335,
+          "cbGapP95": 10.1,
+          "longTasks": 2,
+          "results": [],
+          "rtf": 0.0365,
+          "activeRtf": 0.0522,
+          "text": "对我做了介绍那么我想说的是呢大家如果对我的研究感兴趣呢重点来想谈三个问题首先呢就是这一轮全球金融动量的表现对我做了介绍那么我想说的是呢对我做了介绍"
+        },
+        "vad": {
+          "mode": "energy+preroll",
+          "activeSec": 15.104000000000012,
+          "idleSec": 6.336000000000005,
+          "speechPct": 70.4,
+          "noiseDb": -59.1,
+          "thresholdDb": -47.1,
+          "onsets": 7,
+          "prerollFedSec": 1.536000000000001
+        },
+        "capture": {
+          "contextRate": 16000,
+          "quantum": 128,
+          "chunk": 1024
+        }
+      }
+    },
+    "c3-skip-sniff": {
+      "load": {
+        "recognizerInitMs": 464.4,
+        "readySinceNav": 604
+      },
+      "resources": [
+        {
+          "name": "sherpa-onnx-asr.js",
+          "start": 5,
+          "dur": 6,
+          "tx": 54167,
+          "dec": 53867
+        },
+        {
+          "name": "sherpa-onnx-wasm-main-asr.js",
+          "start": 7,
+          "dur": 6,
+          "tx": 82982,
+          "dec": 82682
+        },
+        {
+          "name": "sherpa-onnx-wasm-main-asr.data",
+          "start": 22,
+          "dur": 103,
+          "tx": 25357958,
+          "dec": 25357658
+        },
+        {
+          "name": "sherpa-onnx-wasm-main-asr.wasm",
+          "start": 25,
+          "dur": 55,
+          "tx": 13420253,
+          "dec": 13419953
+        }
+      ],
+      "stream": {
+        "app": "c3-skip-sniff",
+        "ready": true,
+        "load": {
+          "recognizerInitMs": 464.4,
+          "readySinceNav": 604
+        },
+        "stream": {
+          "audioSec": 20.736000000000015,
+          "feedMs": 25.10000000114087,
+          "decodeMs": 788.8000000000466,
+          "cbCount": 2594,
+          "blockCount": 324,
+          "cbGapP95": 10.1,
+          "longTasks": 2,
+          "results": [
+            "对我做了介绍那么我想说的是大家如果对我的研究感兴趣呢"
+          ],
+          "rtf": 0.0382,
+          "activeRtf": 0.0522,
+          "text": "对我做了介绍那么我想说的是大家如果对我的研究感兴趣呢重点想谈三个问题首先呢就是这一轮全球金融动量的表现对我做了介绍那么我想说的是呢对我做了介绍"
+        },
+        "vad": {
+          "mode": "energy+preroll",
+          "activeSec": 15.296000000000012,
+          "idleSec": 5.440000000000004,
+          "speechPct": 73.8,
+          "noiseDb": -62.7,
+          "thresholdDb": -50.7,
+          "onsets": 6,
+          "prerollFedSec": 1.4080000000000008
+        },
+        "capture": {
+          "contextRate": 16000,
+          "quantum": 128,
+          "chunk": 1024
+        }
+      }
+    },
+    "c4-fullstack": {
+      "load": {
+        "recognizerInitMs": 486.8,
+        "readySinceNav": 661
+      },
+      "resources": [
+        {
+          "name": "sherpa-onnx-asr.js",
+          "start": 5,
+          "dur": 7,
+          "tx": 54167,
+          "dec": 53867
+        },
+        {
+          "name": "sherpa-onnx-wasm-main-asr.js",
+          "start": 8,
+          "dur": 5,
+          "tx": 82982,
+          "dec": 82682
+        },
+        {
+          "name": "sherpa-onnx-wasm-main-asr.data",
+          "start": 25,
+          "dur": 139,
+          "tx": 25357958,
+          "dec": 25357658
+        },
+        {
+          "name": "sherpa-onnx-wasm-main-asr.wasm",
+          "start": 28,
+          "dur": 76,
           "tx": 13420253,
           "dec": 13419953
         }
@@ -515,29 +511,29 @@
         "app": "c4-fullstack",
         "ready": true,
         "load": {
-          "recognizerInitMs": 476.2,
-          "readySinceNav": 664
+          "recognizerInitMs": 486.8,
+          "readySinceNav": 661
         },
         "stream": {
-          "audioSec": 21.184000000000015,
-          "feedMs": 30.10000000151922,
-          "decodeMs": 776.4999999998254,
-          "cbCount": 2655,
-          "blockCount": 331,
+          "audioSec": 21.248000000000015,
+          "feedMs": 24.79999999757274,
+          "decodeMs": 789.8000000001921,
+          "cbCount": 2658,
+          "blockCount": 332,
           "cbGapP95": 10.1,
           "longTasks": 2,
           "results": [
             "对我做了介绍那么我想说的是大家如果对我的研究感兴趣呢"
           ],
-          "rtf": 0.0367,
-          "activeRtf": 0.0521,
-          "text": "对我做了介绍那么我想说的是大家如果对我的研究感兴趣呢重点地想谈三个问题首先呢就是这一轮全球金融动量的表现对我做了介绍那么我想说的是呢对我做了介绍"
+          "rtf": 0.0372,
+          "activeRtf": 0.0527,
+          "text": "对我做了介绍那么我想说的是大家如果对我的研究感兴趣呢重点地想谈谈三个问题首先呢就是这一轮全球金融动量的表现对我做了介绍那么我想说的是对我做了介绍"
         },
         "vad": {
           "mode": "energy+preroll",
-          "activeSec": 15.040000000000012,
+          "activeSec": 15.104000000000012,
           "idleSec": 6.144000000000005,
-          "speechPct": 71,
+          "speechPct": 71.1,
           "noiseDb": -56.3,
           "thresholdDb": -44.3,
           "onsets": 6,
