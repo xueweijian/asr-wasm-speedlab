@@ -79,7 +79,13 @@ jobs:
           sed -i "s/set(onnxruntime_HASH .*)/set(onnxruntime_HASH SHA256=${NEW_HASH})/" cmake/onnxruntime-wasm-simd.cmake
           grep -n onnxruntime_HASH cmake/onnxruntime-wasm-simd.cmake | head -1
           sed -i 's/build-wasm-simd-asr/build-wasm-minort/g' build-wasm-simd-asr.sh
-          ./build-wasm-simd-asr.sh 2>&1 | tail -5
+          set +e
+          ./build-wasm-simd-asr.sh > /tmp/c2-build.log 2>&1
+          RC=$?
+          set -e
+          echo "=== c2 build exit=$RC, last 60 lines ==="
+          tail -60 /tmp/c2-build.log
+          exit $RC
 
       - name: Assemble site (baseline root + experiments/* subpaths + root sw)
         shell: bash
