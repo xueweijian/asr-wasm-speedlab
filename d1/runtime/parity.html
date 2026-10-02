@@ -138,6 +138,7 @@ async function main() {
       const o1 = Array.from(w.slice(48, 52));
       const f = (u) => { const b = new ArrayBuffer(4); new Uint32Array(b)[0] = u; return new Float32Array(b)[0]; };
       dbgLines.push(`kernel#${gi} ${g.kernel.kind}[${g.kernel.op}] op1=${o1} (${f(o1[0])}) op2=${o2}`);
+      dbgLines.push(`IR: scale_tensor kernels=${docJ.kernels.filter((kk) => kk.scale_tensor).length} this.scale_tensor=${g.kernel.scale_tensor || "NONE"}`);
       if (g.kernel.kind === "matmul_int8_dq") {
         const scr = o2[0];
         const raw = await rt.readRaw(scr, 3);
@@ -149,6 +150,8 @@ async function main() {
       const ref0 = manifest && refView(manifest, bin, g.kernel.outputs[0]);
       dbgLines.push(`out[0..3]=${Array.from(outF.slice(0, 4)).map((v) => v.toFixed(4))}` +
           (ref0 ? ` want[0..3]=${Array.from(ref0.f ? ref0.f.slice(0, 4) : []).map((v) => v.toFixed(4))}` : ""));
+      const rawOut = await rt.readRaw(w[40], 4);
+      dbgLines.push(`out raw u32=${Array.from(rawOut)} (${rawOut.map(f).map((v) => v.toFixed(4))})`);
       finish({ pass: true, debug: true, lines: dbgLines });
       return;
     }
