@@ -68,6 +68,7 @@ def main():
     kernels = []           # logical kernels
     consumed = set()       # node indices folded into a fused kernel
     weight_refs = set()    # initializer names referenced by compute kernels
+    fusions = {}           # mmi node idx -> fusion spec
 
     def in0_is_dql(n):
         """MatMulInteger(x, W): is x produced by DynamicQuantizeLinear?"""
@@ -77,7 +78,7 @@ def main():
         return p if p.op_type == "DynamicQuantizeLinear" else None
 
     def dq_chain(n):
-        """Find Cast->fp32 then Mul(x_scale)[-> Mul(w_scale) | Mul(w_scale) then Mul(x_scale)] consumers."""
+        """Find Cast->fp32 then Mul(x_scale)[-> Mul(w_scale)] consumers."""
         out = n.output[0]
         chain = []
         cur = out
@@ -94,37 +95,37 @@ def main():
             break
         return chain, cur
 
+    # ---- pass 1: collect DQ+MMI fusions (retroactive, must precede emission) ----
     for idx, n in enumerate(g.node):
-        if idx in consumed:
+        if n.op_type != "MatMulInteger":
+            continue
+        dql = in0_is_dql(n)
+        if dql is None or dql.output[0] != n.input[0]:
+            continue
+        chain, last = dq_chain(n)
+        if chain and any(k == "mul" for k, *_ in chain):
+            dql_idx = producer[n.input[0]]
+            eaten = {dql_idx, idx} | {c for _, c, *_ in chain}
+            scale_init = [r[0] for k, c, *r in chain if k == "mul" and r and r[0] in init]
+            refs = [i for i in list(n.input[1:]) + list(scale_init) if i in init]
+            fusions[idx] = {"dql": dql_idx, "inputs": [dql.input[0], n.input[1]],
+                            "outputs": [last],
+                            "fused": ["DynamicQuantizeLinear", "MatMulInteger"] +
+                                     [g.node[c].op_type for _, c, *_ in chain],
+                            "refs": refs}
+            consumed |= eaten
+
+    # ---- pass 2: emit kernels in topo order ----
+    for idx, n in enumerate(g.node):
+        if idx in consumed and idx not in fusions:
             continue
         op = n.op_type
-        if op == "MatMulInteger":
-            dql = in0_is_dql(n)
-            if dql is not None and dql.output[0] == n.input[0]:
-                chain, last = dq_chain(n)
-                if chain and any(k == "mul" for k, *_ in chain):
-                    consumed.update({producer[n.input[0]], idx,
-                                     *[c for _, c, *_ in chain]})
-                    scale_init = [r[0] for k, c, *r in chain if k == "mul" and r and r[0] in init]
-                    for i in list(n.input[1:]) + list(scale_init) + list(dql.input[1:]):
-                        if i in init:
-                            weight_refs.add(i)
-                    kernels.append({
-                        "kind": "matmul_int8_dq", "op": op,
-                        "inputs": [dql.input[0], n.input[1]],
-                        "outputs": [last],
-                        "attrs": attrs_of(n),
-                        "fused": ["DynamicQuantizeLinear", "MatMulInteger"] +
-                                 [g.node[c].op_type for _, c, *_ in chain],
-                    })
-                    continue
-            # plain int8 matmul (x already quantized)
-            for i in n.input:
-                if i in init:
-                    weight_refs.add(i)
-            kernels.append({"kind": "matmul_int8", "op": op,
-                            "inputs": list(n.input), "outputs": list(n.output),
-                            "attrs": attrs_of(n)})
+        if idx in fusions:
+            f = fusions[idx]
+            weight_refs.update(f["refs"])
+            kernels.append({"kind": "matmul_int8_dq", "op": op,
+                            "inputs": f["inputs"], "outputs": f["outputs"],
+                            "attrs": attrs_of(n), "fused": f["fused"]})
             continue
         if op in ("MatMul", "Gemm"):
             for i in n.input:
