@@ -42,6 +42,13 @@ fixtures wav ──> ORT fp32 参考输出（真值锚）    ├─ wgsl-runtime
 - 折叠器产出两件套：`kernels.json`（算子序列+权重引用）+ 重排后的权重 blob（fp16 存储，减下载）
 - **D1a ✅ kgen v0 上线（2026-10-02，commit a325f98，d1/out/）**：4713 节点 → 4082 逻辑内核，**216 个 MatMulInteger 100% 融合为 matmul_int8_dq**（DQL+MMI+Cast+Mul×2 单内核，dot4I8Packed 目标形态），零 unsupported 算子；权重 326 张量 23.3MB（int8 21.9MB / fp32 1.5MB），已带 manifest（offset/bytes）打包 weights.bin。
 - **dispatch 预算诚实账（普查数据）**：裸内核表 compute=2169 + layout=1913，直接跑必重演 ORT dispatch 悲剧。朴素链融合（elementwise+control 单消费链）只压到 1330——**不够**。可达路径 = 模块级融合（whisper-webgpu 路线）：① shape 静态求值消灭 layout/shape 管道；② 残余 Transpose/Slice/Gather 融进生产者写布局；③ zipformer 模式匹配（LayerNorm/BiasAdd+act/attention 链）整段折叠——12 stack × 6-8 模块内核 + CTC 头 ≈ **72-96 dispatch** 才够到"几十"。kgen v1 按此序推进。
+- **kgen v1.5 实测阶梯（2026-10-02，Modal 农场快环迭代，bb1d3b5）**：
+  | 阶段 | compute | layout | 手段 |
+  |---|---|---|---|
+  | v0 裸表 | 2169 | 1913 | DQ+MMI 融合（216/216） |
+  | v1 静态形状 | 1789 | 686 | overwrite_input_shapes + 定点 300 轮（D0 部署契约：batch1/chunk77/状态定形） |
+  | v1.5 fuseq | **1148** | 686 | 贪心单消费链（elementwise+control+reduce → 372 条链，均长 2.7——残差流分支限制链长） |
+  剩余构成：206 matmul_int8_dq + 54 conv + 60 matmul_fp + 13 softmax + 372 fuseq + ~400 孤立 elementwise。**到"几十"必须模块级融合**（12 stack 同构 → 手写一次参数化复用）；686 layout 待"融进生产者写布局"。
 - 内核池初版范围（普查定案）：matmul_int8_dq(216) + conv(54) + matmul_fp(60) + softmax/logsoftmax(13) + reduce(19) + elementwise 模板 + control(Where/Equal 掩码，静态化后多数进常量)。
 
 ## 4. 分层验证门（继承 diar-gpu-engine 方法论）
