@@ -17,6 +17,8 @@ import { Runtime } from "./rt.js";
 const qs = new URLSearchParams(location.search);
 const MODE = qs.get("mode") || "kernel";
 const TOL = parseFloat(qs.get("tol") || "1e-4");
+const REL = parseFloat(qs.get("rel") || "3e-6");  // fp32 mathlib ulp budget
+const tolOf = (want) => TOL + REL * Math.abs(want);
 const STOP = qs.get("stop") !== "0";   // stop at first kernel mismatch
 
 const log = (s, cls) => {
@@ -64,7 +66,7 @@ function cmpTensor(gpuBuf, ref) {
       const a = g[i], b = ref.f[i];
       if (Number.isNaN(a) && Number.isNaN(b)) continue;
       const d = Math.abs(a - b);
-      if (!(Number.isNaN(a) === Number.isNaN(b)) || d > TOL) {
+      if (!(Number.isNaN(a) === Number.isNaN(b)) || d > tolOf(b)) {
         if (firstIdx < 0) { firstIdx = i; got = a; want = b; }
         nBad++;
       }
@@ -205,7 +207,7 @@ async function main() {
     for (let i = 0; i < ref.length; i++) {
       const d = Math.abs(lp[i] - ref[i]);
       if (d > maxAbs) maxAbs = d;
-      if (d > TOL) nBad++;
+      if (d > tolOf(ref[i])) nBad++;
     }
     // argmax per frame
     const frames = e2e.shapes.log_probs;
