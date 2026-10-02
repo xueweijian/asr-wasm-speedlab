@@ -103,8 +103,8 @@ def main():
             if dql is not None and dql.output[0] == n.input[0]:
                 chain, last = dq_chain(n)
                 if chain and any(k == "mul" for k, *_ in chain):
-                    consumed.update(producer[n.input[0]], idx,
-                                    *[c for _, c, *r in chain])
+                    consumed.update({producer[n.input[0]], idx,
+                                     *[c for _, c, *_ in chain]})
                     scale_init = [r[0] for k, c, *r in chain if k == "mul" and r and r[0] in init]
                     for i in n.input[1:] + tuple(scale_init) + tuple(dql.input[1:]):
                         if i in init:
