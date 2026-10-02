@@ -117,11 +117,12 @@ for (const d of group.dispatches) {
       if (d.pipe === "copy") {
         v = ldIn(w, 0, g);
       } else if (d.pipe === "gather") {
-        const st = w.slice(52, 56);
-        let src = w[56 + 12]; // op3.x @ word 44+12=56
-        src = w[44 + 12];
-        src += c[0] * w[44 + 0] + c[1] * w[45] + c[2] * w[46 + 0]; // placeholder, fixed below
-        v = 0;
+        const gSt = w.slice(44, 48);       // op0: source strides
+        const gOff = w[56];                // op3.x: source offset
+        let src = gOff + c[0] * gSt[0] + c[1] * gSt[1] + c[2] * gSt[2] + c[3] * gSt[3];
+        const dst = w[40] + c[0] * w[52] + c[1] * w[53] + c[2] * w[54] + c[3] * w[55];
+        A[dst] = ldIn(w, 0, src);
+        continue;
       } else {
         const off0 = c[0] * w[20] + c[1] * w[21] + c[2] * w[22] + c[3] * w[23];
         if (intMode) {
