@@ -153,6 +153,7 @@ export class Runtime {
     });
     this.groups = groups;
     this.topoSchedule();
+    this.executed = 0;
     return this;
   }
 
@@ -232,11 +233,17 @@ export class Runtime {
       const code = ELEM_OP[k.op];
       if (code === undefined) fail("elem op " + k.op);
       const INT_DT = new Set(["int64", "int32", "int8", "uint8", "bool"]);
-      const intMode = INT_DT.has(this.dtypeOf(outName))
+      const outDt = this.dtypeOf(outName);
+      const intMode = INT_DT.has(outDt)
         || k.inputs.some((n) => INT_DT.has(this.dtypeOf(n)));
+      const slotMul = SLOT[outDt] || 1;
+      if (intMode && slotMul === 2
+          && !k.inputs.every((n) => this.dtypeOf(n) === "int64")) {
+        fail("mixed-dtype int64 elem op: " + outName);
+      }
       k.inputs.forEach((n, i) => putIn(i, n));
       setOut();
-      opWords(0, [code, intMode ? 1 : 0, 0, 0]);
+      opWords(0, [code, intMode ? 1 : 0, slotMul, 0]);
       return { pipe: "elem", nOut, words: w, wg: Math.ceil(nOut / 64) };
     }
     if (k.kind === "gather") {
@@ -515,15 +522,19 @@ export class Runtime {
       typedArray.buffer, typedArray.byteOffset, typedArray.byteLength);
   }
   zeroTensor(name) {
-    this.writeTensor(name, new Uint32Array(prod(this.shapeOf(name))));
+    const n = prod(this.shapeOf(name)) * (SLOT[this.dtypeOf(name)] || 1);
+    this.writeTensor(name, new Uint32Array(n));
   }
 
+  // incremental execution: dispatches are pure functions of arena state,
+  // so a runThrough(giEnd) only submits dispatches not yet executed
   runThrough(giEnd) {
     const cut = giEnd >= this.groupEnd.length ? this.schedule.length
       : this.groupEnd[giEnd];
+    if (cut <= this.executed) { return; }
     const enc = this.device.createCommandEncoder();
     const pass = enc.beginComputePass();
-    for (let i = 0; i < cut; i++) {
+    for (let i = this.executed; i < cut; i++) {
       const d = this.schedule[i];
       pass.setPipeline(this.pipes[d.pipe]);
       pass.setBindGroup(0, this.bg, [d.block * 512]);
@@ -531,7 +542,9 @@ export class Runtime {
     }
     pass.end();
     this.device.queue.submit([enc.finish()]);
+    this.executed = cut;
   }
+  resetExecution() { this.executed = 0; }
 
   async readRaw(offU32, nWords) {
     const staging = this.device.createBuffer({ size: nWords * 4, usage: BUF.MAP_READ | BUF.COPY_DST });

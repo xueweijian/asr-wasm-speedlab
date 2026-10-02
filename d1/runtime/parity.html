@@ -127,34 +127,6 @@ async function main() {
   if (MODE === "kernel") {
     feedChunk(0);
     for (const s of stateInputs) rt.zeroTensor(s);
-    const DBG = qs.get("debug");
-    const dbgLines = [];
-    if (DBG !== null) {
-      const gi = parseInt(DBG);
-      rt.runThrough(gi + 1);
-      const g = rt.groups[gi];
-      const w = g.dispatches[g.dispatches.length - 1].words;
-      const o2 = Array.from(w.slice(52, 56));
-      const o1 = Array.from(w.slice(48, 52));
-      const f = (u) => { const b = new ArrayBuffer(4); new Uint32Array(b)[0] = u; return new Float32Array(b)[0]; };
-      dbgLines.push(`kernel#${gi} ${g.kernel.kind}[${g.kernel.op}] op1=${o1} (${f(o1[0])}) op2=${o2}`);
-      dbgLines.push(`IR: scale_tensor kernels=${docJ.kernels.filter((kk) => kk.scale_tensor).length} this.scale_tensor=${g.kernel.scale_tensor || "NONE"}`);
-      if (g.kernel.kind === "matmul_int8_dq") {
-        const scr = o2[0];
-        const raw = await rt.readRaw(scr, 3);
-        dbgLines.push(`scratch min=${f(raw[0])} scale=${f(raw[1])} zp=${raw[2]}`);
-        if (o2[3]) { const lz = await rt.readRaw(o2[3], 1); dbgLines.push(`lazy=${f(lz[0])}`); }
-      }
-      const outBuf = await rt.readTensor(g.kernel.outputs[0]);
-      const outF = new Float32Array(outBuf);
-      const ref0 = manifest && refView(manifest, bin, g.kernel.outputs[0]);
-      dbgLines.push(`out[0..3]=${Array.from(outF.slice(0, 4)).map((v) => v.toFixed(4))}` +
-          (ref0 ? ` want[0..3]=${Array.from(ref0.f ? ref0.f.slice(0, 4) : []).map((v) => v.toFixed(4))}` : ""));
-      const rawOut = await rt.readRaw(w[40], 4);
-      dbgLines.push(`out raw u32=${Array.from(rawOut)} (${rawOut.map(f).map((v) => v.toFixed(4))})`);
-      finish({ pass: true, debug: true, lines: dbgLines });
-      return;
-    }
     let nPass = 0, worst = { maxAbs: 0 }, t0 = performance.now();
     for (let gi = 0; gi < rt.groups.length; gi++) {
       const g = rt.groups[gi];

@@ -7,3 +7,7 @@ dist/
 models/
 emsdk-cache/
 d1/runtime/ref/
+chunk0.*
+e2e.json
+feats.json
+.push-state

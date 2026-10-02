@@ -50,7 +50,7 @@ jobs:
           SRV=$!
           sleep 1
           node drive.mjs "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
-            "http://127.0.0.1:8080/parity.html?mode=kernel&debug=53"
+            "http://127.0.0.1:8080/parity.html?mode=kernel"
           RC=$?
           kill $SRV 2>/dev/null || true
           exit $RC

@@ -113,9 +113,11 @@ fn main(@builtin(global_invocation_id) g: vec3<u32>) {
   }
   if (P.op0.y == 1u) {
     // integer path: raw u32/i32 semantics (values fit low word; denorm-FTZ
-    // makes f32 bitcast arithmetic unusable on GPUs)
-    let a = ldInU(0u, offOf(P.in0Stride, c));
-    let b = select(0u, ldInU(1u, offOf(P.in1Stride, c)), P.inCount > 1u);
+    // makes f32 bitcast arithmetic unusable on GPUs). op0.z = slots/elem:
+    // 2 => int64 (write result at 2*gid, zero the high word)
+    let sm = select(1u, 2u, P.op0.z == 2u);
+    let a = ldInU(0u, offOf(P.in0Stride, c) * sm);
+    let b = select(0u, ldInU(1u, offOf(P.in1Stride, c) * sm), P.inCount > 1u);
     var r = a;
     if (o == ${OP.ADD}) { r = a + b; }
     else if (o == ${OP.SUB}) { r = a - b; }
@@ -128,10 +130,11 @@ fn main(@builtin(global_invocation_id) g: vec3<u32>) {
       else if (o == ${OP.LESS}) { bb = i32(a) < i32(b); }
       else if (o == ${OP.LESSOREQUAL}) { bb = i32(a) <= i32(b); }
       else { bb = i32(a) > i32(b); }
-      A[P.outOff + g.x] = select(0u, 1u, bb);
+      A[P.outOff + g.x * sm] = select(0u, 1u, bb);
       return;
     }
-    A[P.outOff + g.x] = r;
+    A[P.outOff + g.x * sm] = r;
+    if (sm == 2u) { A[P.outOff + g.x * sm + 1u] = 0u; }
     return;
   }
   var v = ldIn(0u, offOf(P.in0Stride, c));
@@ -363,7 +366,9 @@ fn main(@builtin(global_invocation_id) g: vec3<u32>) {
     let wv = (i32(word << (24u - sh)) >> 24) - bZp;  // sign-extended int8
     acc = acc + qr * wv;
   }
-  stfA(P.outOff + g.x, f32(acc) * aScale * wScale);
+  // wScale IS the full dequant factor (lazy combined tensor, or
+  // w_scale_init * aScale) — do not multiply aScale again
+  stfA(P.outOff + g.x, f32(acc) * wScale);
 }
 `;
 
