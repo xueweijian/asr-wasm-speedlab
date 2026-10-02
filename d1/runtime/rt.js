@@ -333,10 +333,17 @@ export class Runtime {
       return { pipe: "gather", nOut: w[1], words: w, wg: Math.ceil(w[1] / 64) };
     }
     if (k.kind === "copy") {
-      putIn(0, k.inputs[0]); setOut();
+      // implemented as identity GATHER (same semantics, different pipeline —
+      // isolates a suspected Metal issue with the trivial copy shader)
+      const { st } = putIn(0, k.inputs[0]);
+      setOut();
+      const dstSt = strides4(outSh4);
+      opWords(0, st.slice(0, 4));
+      opWords(2, dstSt);
+      opWords(3, [0, 0, 0, 0]);
       const units = nOut * (SLOT[this.dtypeOf(outName)] || 1);
       w[1] = units;
-      return { pipe: "copy", nOut: units, words: w, wg: Math.ceil(units / 64) };
+      return { pipe: "gather", nOut: units, words: w, wg: Math.ceil(units / 64) };
     }
     if (k.kind === "gelem") {
       putIn(0, k.inputs[0]); putIn(1, k.inputs[1]); setOut();

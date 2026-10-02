@@ -16,8 +16,11 @@ CACHE = modal.Volume.from_name("kgen-cache", create_if_missing=True)
 
 image = (
     modal.Image.debian_slim(python_version="3.11")
-    .apt_install("chromium", "nodejs", "npm")
-    .run_commands("npm i --prefix /root/pm puppeteer-core@23 --registry=https://registry.npmjs.org")
+    .apt_install("wget", "unzip", "ca-certificates", "mesa-vulkan-drivers", "vulkan-tools")
+    .run_commands(
+        "wget -q -O /tmp/deno.zip https://github.com/denoland/deno/releases/download/v1.46.3/deno-x86_64-unknown-linux-gnu.zip",
+        "cd /usr/local/bin && unzip -o /tmp/deno.zip && rm /tmp/deno.zip && chmod +x deno",
+    )
     .add_local_dir(str(ROOT / "d1" / "runtime"), "/root/site")
 )
 
@@ -26,21 +29,19 @@ import puppeteer from 'puppeteer-core';
 (async () => {
   const mode = process.argv[2];
   const browser = await puppeteer.launch({
-    executablePath: '/usr/bin/chromium',
+    executablePath: '/usr/bin/google-chrome',
     headless: true,
     dumpio: true,
-    args: ['--no-sandbox', '--disable-dev-shm-usage',
-           '--enable-unsafe-swiftshader', '--use-angle=swiftshader',
-           '--use-webgpu-adapter=swiftshader',
-           '--enable-features=Vulkan'],
+    args: ['--no-sandbox', '--disable-dev-shm-usage', '--no-zygote',
+           '--disable-gpu-sandbox', '--use-gl=angle', '--use-angle=swiftshader',
+           '--enable-unsafe-swiftshader', '--ozone-platform=headless'],
   });
   const page = await browser.newPage();
   page.on('console', (m) => console.log('[page]', m.text()));
   try {
     await page.goto('chrome://gpu', {timeout: 20000});
     const txt = await page.evaluate(() => document.body.innerText);
-    const lines = txt.split('\n').filter((l) => /WebGPU|SwiftShader|Graphics Feature|adapter/i.test(l));
-    console.log('[gpu-diag]', lines.slice(0, 20).join(' | '));
+    console.log('[gpu-diag-full]\n' + txt.slice(0, 4000));
   } catch (e) { console.log('[gpu-diag] failed', e.message); }
   page.on('pageerror', (e) => console.log('[pageerr]', e.message));
   await page.goto(`http://127.0.0.1:8080/parity.html?mode=${mode}`, {timeout: 60000});
@@ -54,6 +55,41 @@ import puppeteer from 'puppeteer-core';
   await browser.close();
 })().catch((e) => { console.error('DRIVE_FAIL', e); process.exit(1); });
 """
+
+
+@app.function(image=image, volumes={"/cache": CACHE}, cpu=4, memory=8192,
+              timeout=1800)
+def parity_deno(mode: str = "kernel") -> dict:
+    import json
+    import os
+    import shutil
+    import subprocess
+
+    site = "/root/site"
+    for f in ("kernels.json", "weights.bin"):
+        src_p = f"/cache/out/{f}"
+        if not os.path.exists(src_p):
+            raise RuntimeError(f"missing {src_p}; run kgen farm first")
+        shutil.copy(src_p, f"{site}/{f}")
+    os.makedirs(f"{site}/ref", exist_ok=True)
+    for f in os.listdir("/cache/ref"):
+        shutil.copy(f"/cache/ref/{f}", f"{site}/ref/{f}")
+    env = dict(os.environ)
+    env["VK_ICD_FILENAMES"] = "/usr/share/vulkan/icd.d/lvp_icd.x86_64.json"
+    r = subprocess.run(["deno", "run", "-A", "--unstable-webgpu",
+                        f"{site}/parity_deno.mjs", site, mode],
+                       capture_output=True, text=True, timeout=1700, env=env,
+                       cwd=site)
+    print(r.stdout[-6000:])
+    if r.returncode not in (0, 3):
+        print("STDERR:", r.stderr[-3000:])
+        return {"pass": False, "deno_fail": True}
+    for line in r.stdout.splitlines():
+        if line.startswith("RESULT_JSON:"):
+            res = json.loads(line[len("RESULT_JSON:"):])
+            CACHE.commit()
+            return res
+    return {"pass": False, "no_result": True, "tail": r.stdout[-2000:]}
 
 
 @app.function(image=image, volumes={"/cache": CACHE}, cpu=4, memory=8192,
@@ -110,7 +146,8 @@ def parity(mode: str = "kernel") -> dict:
 
 
 @app.local_entrypoint()
-def main(mode: str = "kernel"):
+def main(mode: str = "kernel", engine: str = "deno"):
     import json as _j
-    res = parity.remote(mode=mode)
+    fn = parity_deno if engine == "deno" else parity
+    res = fn.remote(mode=mode)
     print("FINAL:", _j.dumps(res))
