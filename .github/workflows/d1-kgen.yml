@@ -1,0 +1,38 @@
+name: d1-kgen
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['d1/kgen.py', '.github/workflows/d1-kgen.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  kgen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install onnx onnxsim onnxruntime numpy
+      - name: Fetch small-ctc model
+        run: |
+          curl -sSL -o ctc.tar.bz2 https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-small-ctc-zh-int8-2025-04-01.tar.bz2
+          tar xf ctc.tar.bz2 && rm -f ctc.tar.bz2
+      - name: Fold (D0-certified pipeline, full gate re-run)
+        run: |
+          M=$(find . -name 'model*.onnx' -path '*ctc*' | head -1)
+          W=$(find . -name '*.wav' -not -path './.git/*' | sort | head -1)
+          python d0/fold.py "$M" /tmp/folded.onnx /tmp/d0stats.json --wav "$W"
+      - name: kgen
+        run: python d1/kgen.py /tmp/folded.onnx d1/out
+      - name: Commit kernels.json + stats (weights.bin regenerated on demand)
+        run: |
+          git config user.name "bench-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add d1/out/kernels.json d1/out/kgen-stats.json
+          git diff --cached --quiet && echo "no changes" || (git commit -m "d1: kgen ${GITHUB_SHA::7}" && git pull --rebase && git push)
