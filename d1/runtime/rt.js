@@ -372,7 +372,12 @@ export class Runtime {
   async init(navigator) {
     const adapter = await navigator.gpu.requestAdapter();
     if (!adapter) fail("no adapter");
-    this.device = await adapter.requestDevice();
+    this.device = await adapter.requestDevice({
+      requiredLimits: {
+        maxStorageBufferBindingSize: adapter.limits.maxStorageBufferBindingSize,
+        maxBufferSize: adapter.limits.maxBufferSize,
+      },
+    });
     const dev = this.device;
     this.wBuf = dev.createBuffer({ size: Math.ceil(this.wBytes.byteLength / 4) * 4,
       usage: BUF.STORAGE | BUF.COPY_DST });

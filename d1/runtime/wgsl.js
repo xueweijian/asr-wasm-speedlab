@@ -200,8 +200,8 @@ fn main(@builtin(global_invocation_id) g: vec3<u32>) {
       c[u32(r)] = rem % d;
       rem = rem / d;
     }
-    var of = c[0]*P.op4.x + c[1]*P.op4.y + c[2]*P.op4.z + c[3]*P.op4.w;
-    if (of == g.x) { acc += ldIn(0u, e); }
+    var oFlat = c[0]*P.op4.x + c[1]*P.op4.y + c[2]*P.op4.z + c[3]*P.op4.w;
+    if (oFlat == g.x) { acc += ldIn(0u, e); }
   }
   if (P.op0.x == 1u) { acc = acc * bitcast<f32>(P.op0.w); }
   stfA(P.outOff + g.x, acc);
