@@ -166,9 +166,12 @@ export class Runtime {
     if (k.kind === "elem") {
       const code = ELEM_OP[k.op];
       if (code === undefined) fail("elem op " + k.op);
+      const INT_DT = new Set(["int64", "int32", "int8", "uint8", "bool"]);
+      const intMode = INT_DT.has(this.dtypeOf(outName))
+        || k.inputs.some((n) => INT_DT.has(this.dtypeOf(n)));
       k.inputs.forEach((n, i) => putIn(i, n));
       setOut();
-      opWords(0, [code, 0, 0, 0]);
+      opWords(0, [code, intMode ? 1 : 0, 0, 0]);
       return { pipe: "elem", nOut, words: w, wg: Math.ceil(nOut / 64) };
     }
     if (k.kind === "gather") {
@@ -226,13 +229,18 @@ export class Runtime {
       } else if (k.op === "Expand") {
         // broadcast copy: st already zeroed for bcast dims by putIn
       } else fail("gather op " + k.op);
+      if ((SLOT[this.dtypeOf(outName)] || 1) !== 1) {
+        fail("gather on multi-slot dtype: " + this.dtypeOf(outName));
+      }
       opWords(0, g);
       opWords(3, [gOff, 0, 0, 0]);
       return { pipe: "gather", nOut: w[1], words: w, wg: Math.ceil(w[1] / 64) };
     }
     if (k.kind === "copy") {
       putIn(0, k.inputs[0]); setOut();
-      return { pipe: "copy", nOut, words: w, wg: Math.ceil(nOut / 64) };
+      const units = nOut * (SLOT[this.dtypeOf(outName)] || 1);
+      w[1] = units;
+      return { pipe: "copy", nOut: units, words: w, wg: Math.ceil(units / 64) };
     }
     if (k.kind === "gelem") {
       putIn(0, k.inputs[0]); putIn(1, k.inputs[1]); setOut();

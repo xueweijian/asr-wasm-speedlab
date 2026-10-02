@@ -140,8 +140,8 @@ def chain_fuse(kernels):
     return out
 
 
-DT_NAMES = {1: "float32", 2: "uint8", 3: "int8", 4: "int16", 5: "int32",
-            6: "int64", 7: "bool", 9: "bool", 10: "float16", 11: "float64"}
+DT_NAMES = {1: "float32", 2: "uint8", 3: "int8", 4: "uint16", 5: "int16",
+            6: "int32", 7: "int64", 9: "bool", 10: "float16", 11: "float64"}
 
 
 def tensor_shape_table(m):

@@ -111,6 +111,29 @@ fn main(@builtin(global_invocation_id) g: vec3<u32>) {
     stfA(P.outOff + g.x, select(y, x, cond != 0u));
     return;
   }
+  if (P.op0.y == 1u) {
+    // integer path: raw u32/i32 semantics (values fit low word; denorm-FTZ
+    // makes f32 bitcast arithmetic unusable on GPUs)
+    let a = ldInU(0u, offOf(P.in0Stride, c));
+    let b = select(0u, ldInU(1u, offOf(P.in1Stride, c)), P.inCount > 1u);
+    var r = a;
+    if (o == ${OP.ADD}) { r = a + b; }
+    else if (o == ${OP.SUB}) { r = a - b; }
+    else if (o == ${OP.MUL}) { r = a * b; }
+    else if (o == ${OP.MAX}) { r = select(b, a, i32(a) > i32(b)); }
+    else if (o == ${OP.MIN}) { r = select(b, a, i32(a) < i32(b)); }
+    else if (o == ${OP.EQUAL} || o == ${OP.LESS} || o == ${OP.LESSOREQUAL} || o == ${OP.GREATER}) {
+      var bb = false;
+      if (o == ${OP.EQUAL}) { bb = a == b; }
+      else if (o == ${OP.LESS}) { bb = i32(a) < i32(b); }
+      else if (o == ${OP.LESSOREQUAL}) { bb = i32(a) <= i32(b); }
+      else { bb = i32(a) > i32(b); }
+      A[P.outOff + g.x] = select(0u, 1u, bb);
+      return;
+    }
+    A[P.outOff + g.x] = r;
+    return;
+  }
   var v = ldIn(0u, offOf(P.in0Stride, c));
   if (o == ${OP.EQUAL} || o == ${OP.LESS} || o == ${OP.LESSOREQUAL} || o == ${OP.GREATER}) {
     let w = ldIn(1u, offOf(P.in1Stride, c));
