@@ -198,8 +198,24 @@ export class Runtime {
     this.schedule = order;
     this.groupEnd = new Array(this.groups.length).fill(0);
     for (let i = 0; i < order.length; i++) {
+      order[i].__sched = i;
       this.groupEnd[order[i].groupIdx] = i + 1;
     }
+  }
+
+  runThroughSchedule(posIncl) {
+    if (posIncl + 1 <= this.executed) { return; }
+    const enc = this.device.createCommandEncoder();
+    const pass = enc.beginComputePass();
+    for (let i = this.executed; i <= posIncl; i++) {
+      const d = this.schedule[i];
+      pass.setPipeline(this.pipes[d.pipe]);
+      pass.setBindGroup(0, this.bg, [d.block * 512]);
+      pass.dispatchWorkgroups(d.wg);
+    }
+    pass.end();
+    this.device.queue.submit([enc.finish()]);
+    this.executed = posIncl + 1;
   }
 
   encode(k, ki, extra = {}) {

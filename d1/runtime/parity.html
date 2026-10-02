@@ -128,8 +128,42 @@ async function main() {
     feedChunk(0);
     for (const s of stateInputs) rt.zeroTensor(s);
     let nPass = 0, worst = { maxAbs: 0 }, t0 = performance.now();
+    const cmpAt = async (outName, gi, tag) => {
+      const ref = refView(manifest, bin, outName);
+      if (!ref) return null;
+      const gpu = await rt.readTensor(outName);
+      const c = cmpTensor(gpu, ref);
+      if (c.nBad > 0) {
+        log(`FAIL ${tag} kernel#${gi} out=${outName} nBad=${c.nBad}/${c.n} ` +
+            `first=${c.firstIdx} got=${c.got} want=${c.want} maxAbs=${c.maxAbs.toExponential(3)}`, "bad");
+        return c;
+      }
+      return null;
+    };
     for (let gi = 0; gi < rt.groups.length; gi++) {
       const g = rt.groups[gi];
+      // fuseq: step-by-step compare (GPU NaN localization)
+      if (g.kernel.kind === "fuseq") {
+        let stepFail = null;
+        for (let si = 0; si < g.dispatches.length && !stepFail; si++) {
+          const d = g.dispatches[si];
+          rt.runThroughSchedule(d.__sched);
+          const st = g.kernel.seq[si];
+          for (const oname of st.outputs) {
+            const c = await cmpAt(oname, gi, `step${si}[${st.op}]`);
+            if (c) { stepFail = { si, st, c }; break; }
+          }
+        }
+        if (stepFail) {
+          finish({ pass: false, gi, kind: "fuseq-step", op: stepFail.st.op,
+                   tensor: stepFail.st.outputs[0], nBad: stepFail.c.nBad,
+                   n: stepFail.c.n, got: stepFail.c.got, want: stepFail.c.want,
+                   stepIdx: stepFail.si, nPass });
+          return;
+        }
+        nPass++;
+        continue;
+      }
       rt.runThrough(gi + 1);
       for (const outName of g.kernel.outputs) {
         const ref = refView(manifest, bin, outName);

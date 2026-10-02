@@ -55,6 +55,10 @@ def main():
     base_tree = api(f"git/commits/{remote}")["tree"]["sha"]
     items = []
     for f in files:
+        exists = subprocess.run(["git", "cat-file", "-e", f"{local}:{f}"],
+                                capture_output=True).returncode == 0
+        if not exists:
+            continue  # deleted locally and absent on remote — nothing to overlay
         raw = subprocess.run(["git", "show", f"{local}:{f}"],
                              capture_output=True).stdout
         blob = api("git/blobs",
