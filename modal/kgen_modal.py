@@ -11,6 +11,8 @@ Outputs land in Volume /cache/out and are mirrored back to d1/out locally.
 """
 from pathlib import Path
 
+import sys
+
 import modal
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -24,6 +26,7 @@ image = (
     .add_local_file(str(ROOT / "d0" / "fold.py"), "/root/job/fold.py")
     .add_local_file(str(ROOT / "d1" / "kgen.py"), "/root/job/kgen.py")
     .add_local_file(str(ROOT / "d1" / "ref.py"), "/root/job/ref.py")
+    .add_local_file(str(ROOT / "d1" / "probe_mmi.py"), "/root/job/probe_mmi.py")
 )
 
 MODEL_URL = ("https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/"
@@ -92,6 +95,13 @@ def make_ref():
 
 
 @app.function(image=image, volumes={"/cache": CACHE}, cpu=2, memory=2048, timeout=300)
+def probe_mmi() -> str:
+    import subprocess
+    r = subprocess.run(["python", "/root/job/probe_mmi.py"], capture_output=True, text=True)
+    return r.stdout + r.stderr[-2000:]
+
+
+@app.function(image=image, volumes={"/cache": CACHE}, cpu=2, memory=2048, timeout=300)
 def pull_artifacts() -> dict:
     import base64
     out = {}
@@ -101,7 +111,7 @@ def pull_artifacts() -> dict:
 
 
 @app.local_entrypoint()
-def main(skip_fold: bool = False, ref: bool = False, pull: bool = False):
+def main(skip_fold: bool = False, ref: bool = False, pull: bool = False, probe: bool = False):
     if pull:
         import base64
         res = pull_artifacts.remote()
@@ -113,6 +123,9 @@ def main(skip_fold: bool = False, ref: bool = False, pull: bool = False):
         return
     if ref:
         print(make_ref.remote())
+        return
+    if probe:
+        print(probe_mmi.remote())
         return
     res = run.remote(skip_fold=skip_fold)
     s = res["stats"]

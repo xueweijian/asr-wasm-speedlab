@@ -321,8 +321,9 @@ fn main(@builtin(local_invocation_id) lid: vec3<u32>,
     }
     var scale = (mx2 - mn2) / 255.0;
     if (scale == 0.0) { scale = 1.0; }
-    // ONNX DQL (uint8): zp = qmin - round(qmin - min/scale), qmin = 0
-    var zp = rhte(mn2 / scale);
+    // ONNX DQL (uint8): zp = round(-min/scale), clamped to [0,255]
+    // (verified bit-exact against ORT on the real tensor — see probe_mmi.py)
+    var zp = rhte(-mn2 / scale);
     zp = clamp(zp, 0.0, 255.0);
     stfA(P.outOff, mn2);
     stfA(P.outOff + 1u, scale);
