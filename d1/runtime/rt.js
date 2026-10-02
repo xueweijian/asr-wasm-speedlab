@@ -223,9 +223,11 @@ export class Runtime {
       } else if (k.op === "Concat") {
         const p = k.attrs.__piece;
         const inSt = strides4(pad4(this.shapeOf(in0)));
-        gOff = p.start * inSt[4 - extra.pieceRank + p.axis];
         g.splice(0, 4, ...inSt);
         w[1] = prod(pieceShape);
+        // piece offset lives on the OUTPUT side: out[..., start+i] = in[..., i]
+        const outStReal = strides4(pad4(this.shapeOf(k.outputs[0])));
+        w[40] += p.start * outStReal[4 - extra.pieceRank + p.axis];
       } else if (k.op === "Expand") {
         // broadcast copy: st already zeroed for bcast dims by putIn
       } else fail("gather op " + k.op);
