@@ -20,10 +20,17 @@ import onnx
 from onnxsim import simplify
 from onnx import numpy_helper
 
-MODEL = sys.argv[1]
-OUT_DIR = sys.argv[2]
-MAX_JSON = int(sys.argv[sys.argv.index("--max-kernels-json") + 1]) if "--max-kernels-json" in sys.argv else 4000
-STATIC_SHAPES = "--dynamic" not in sys.argv
+
+def _args():
+    MODEL = sys.argv[1]
+    OUT_DIR = sys.argv[2]
+    MAX_JSON = int(sys.argv[sys.argv.index("--max-kernels-json") + 1]) if "--max-kernels-json" in sys.argv else 4000
+    STATIC_SHAPES = "--dynamic" not in sys.argv
+    return MODEL, OUT_DIR, MAX_JSON, STATIC_SHAPES
+
+
+# importable module (ref.py uses static_shape_pass); argv parsed when run as script
+MODEL, OUT_DIR, MAX_JSON, STATIC_SHAPES = _args() if __name__ == "__main__" else (None, None, 4000, True)
 
 
 def static_shape_pass(m):
@@ -117,7 +124,12 @@ def chain_fuse(kernels):
             for t in kernels[j]["inputs"]:
                 if t not in internal and t not in inputs:
                     inputs.append(t)
-        seq = [{"op": kernels[j]["op"], "attrs": kernels[j]["attrs"]} for j in chain]
+        # per-step wiring: runtime codegen needs each step's actual in/out
+        # tensor names to rebuild dataflow (intermediates stay in-kernel)
+        seq = [{"op": kernels[j]["op"], "attrs": kernels[j]["attrs"],
+                "inputs": list(kernels[j]["inputs"]),
+                "outputs": list(kernels[j]["outputs"])}
+               for j in chain]
         out.append({"kind": "fuseq", "op": "fuseq", "seq": seq,
                     "inputs": inputs, "outputs": kernels[chain[-1]]["outputs"],
                     "fused_from": len(chain)})
@@ -128,11 +140,34 @@ def chain_fuse(kernels):
     return out
 
 
+DT_NAMES = {1: "float32", 2: "uint8", 3: "int8", 4: "int16", 5: "int32",
+            6: "int64", 7: "bool", 9: "bool", 10: "float16", 11: "float64"}
+
+
+def tensor_shape_table(m):
+    """Shapes + dtypes for every tensor (graph io + intermediates) under the
+    static contract — the runtime's buffer-allocation ground truth."""
+    from onnx import shape_inference
+    mi = shape_inference.infer_shapes(m, check_type=True, strict_mode=False)
+    table = {}
+    for coll in (mi.graph.value_info, mi.graph.input, mi.graph.output):
+        for vi in coll:
+            tt = vi.type.tensor_type
+            dims = [d.dim_value for d in tt.shape.dim]
+            table[vi.name] = {"shape": dims, "dtype": DT_NAMES.get(tt.elem_type, f"t{tt.elem_type}")}
+    for init_ in mi.graph.initializer:
+        table[init_.name] = {"shape": list(init_.dims),
+                             "dtype": DT_NAMES.get(init_.data_type, f"t{init_.data_type}")}
+    missing = 0
+    return table
+
+
 def main():
     m = onnx.load(MODEL)
     if STATIC_SHAPES:
         m = static_shape_pass(m)
     g = m.graph
+    tensor_shapes = tensor_shape_table(m)
 
     init = {i.name: i for i in g.initializer}
     producer = {}          # tensor name -> producing node index
@@ -187,7 +222,9 @@ def main():
             eaten = {dql_idx, idx} | {c for _, c, *_ in chain}
             scale_init = [r[0] for k, c, *r in chain if k == "mul" and r and r[0] in init]
             refs = [i for i in list(n.input[1:]) + list(scale_init) if i in init]
-            fusions[idx] = {"dql": dql_idx, "inputs": [dql.input[0], n.input[1]],
+            w_name = n.input[1]
+            extras = [r for r in refs if r != w_name]  # w_zp / w_scale inits
+            fusions[idx] = {"dql": dql_idx, "inputs": [dql.input[0], n.input[1]] + extras,
                             "outputs": [last],
                             "fused": ["DynamicQuantizeLinear", "MatMulInteger"] +
                                      [g.node[c].op_type for _, c, *_ in chain],
@@ -222,11 +259,17 @@ def main():
                             "outputs": list(n.output), "attrs": attrs_of(n)})
             continue
         if op in ELEMENTWISE:
+            for i in n.input:
+                if i in init:
+                    weight_refs.add(i)  # Pow exp / scalar operands etc.
             kernels.append({"kind": "elementwise", "op": op,
                             "inputs": list(n.input), "outputs": list(n.output),
                             "attrs": attrs_of(n)})
             continue
         if op in REDUCE:
+            for i in n.input[1:]:  # axes tensor (opset<13) is an initializer
+                if i in init:
+                    weight_refs.add(i)
             kernels.append({"kind": "reduce", "op": op,
                             "inputs": list(n.input), "outputs": list(n.output),
                             "attrs": attrs_of(n)})
@@ -237,11 +280,20 @@ def main():
                             "attrs": attrs_of(n)})
             continue
         if op in CONTROL:
+            for i in n.input:
+                if i in init:
+                    weight_refs.add(i)
             kernels.append({"kind": "control", "op": op,
                             "inputs": list(n.input), "outputs": list(n.output),
                             "attrs": attrs_of(n)})
             continue
         if op in LAYOUT:
+            # layout param tensors (Slice starts/ends/axes/steps, Reshape
+            # shape, Unsqueeze axes, Expand shape, Concat axis if input) are
+            # initializers — pack them so the runtime resolves params host-side
+            for i in n.input[1:]:
+                if i in init:
+                    weight_refs.add(i)
             kernels.append({"kind": "layout", "op": op,
                             "inputs": list(n.input), "outputs": list(n.output),
                             "attrs": attrs_of(n)})
@@ -253,13 +305,18 @@ def main():
     # ---- pass 3: elementwise/control/reduce chain fusion (fuseq) ----
     kernels = chain_fuse(kernels)
 
-    # ---- weights packing ----
+    # ---- weights packing (sorted for cross-run determinism; 4-byte aligned:
+    # WGSL storage buffers have no 8-bit types — the arena is read as u32) ----
     os.makedirs(OUT_DIR, exist_ok=True)
     manifest, blob, off = [], [], 0
-    for name in weight_refs:
+    for name in sorted(weight_refs):
         t = init[name]
         arr = numpy_helper.to_array(t)
         b = arr.tobytes()
+        pad = (-off) & 3
+        if pad:
+            blob.append(b"\x00" * pad)
+            off += pad
         manifest.append({"name": name, "dtype": str(arr.dtype),
                          "shape": list(arr.shape), "offset": off, "bytes": len(b)})
         blob.append(b)
@@ -296,12 +353,16 @@ def main():
     stats["layout_ops"] = kind_disp.get("layout", 0)
 
     # ---- kernels.json ----
+    if len(kernels) > MAX_JSON:
+        raise SystemExit(f"kgen: {len(kernels)} kernels > MAX_JSON {MAX_JSON}; "
+                         "raise the cap instead of truncating the IR")
     doc = {"meta": {"model": stats["model"], "nodes": stats["nodes"],
                     "kernels": stats["kernels"],
                     "inputs": [i.name for i in g.input],
                     "outputs": [o.name for o in g.output]},
+           "tensors": tensor_shapes,
            "weights": manifest,
-           "kernels": kernels[:MAX_JSON]}
+           "kernels": kernels}
     with open(os.path.join(OUT_DIR, "kernels.json"), "w") as f:
         json.dump(doc, f, separators=(",", ":"))
     with open(os.path.join(OUT_DIR, "kgen-stats.json"), "w") as f:

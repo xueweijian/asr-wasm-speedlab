@@ -23,6 +23,7 @@ image = (
     .pip_install("onnx", "onnxsim", "onnxruntime", "numpy")
     .add_local_file(str(ROOT / "d0" / "fold.py"), "/root/job/fold.py")
     .add_local_file(str(ROOT / "d1" / "kgen.py"), "/root/job/kgen.py")
+    .add_local_file(str(ROOT / "d1" / "ref.py"), "/root/job/ref.py")
 )
 
 MODEL_URL = ("https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/"
@@ -76,8 +77,43 @@ def run(skip_fold: bool = False) -> dict:
     return {"stats": stats, "kernels": kj, "kernels_json_bytes": len(kernels_raw)}
 
 
+@app.function(image=image, volumes={"/cache": CACHE}, cpu=4, memory=4096, timeout=900)
+def make_ref():
+    """Generate parity ground truth from the cached folded.onnx."""
+    import subprocess
+    r = subprocess.run(["python", "/root/job/ref.py", "/cache/folded.onnx",
+                        "/cache/test.wav", "/cache/ref"])
+    if r.returncode:
+        raise RuntimeError("ref generation failed")
+    import os
+    CACHE.commit()
+    return {f: os.path.getsize(f"/cache/ref/{f}") for f in
+            sorted(os.listdir("/cache/ref"))}
+
+
+@app.function(image=image, volumes={"/cache": CACHE}, cpu=2, memory=2048, timeout=300)
+def pull_artifacts() -> dict:
+    import base64
+    out = {}
+    for f in ("kernels.json", "kgen-stats.json", "weights.bin"):
+        out[f] = base64.b64encode(open(f"/cache/out/{f}", "rb").read()).decode()
+    return out
+
+
 @app.local_entrypoint()
-def main(skip_fold: bool = False):
+def main(skip_fold: bool = False, ref: bool = False, pull: bool = False):
+    if pull:
+        import base64
+        res = pull_artifacts.remote()
+        outdir = ROOT / "d1" / "out"
+        outdir.mkdir(exist_ok=True)
+        for f, b64 in res.items():
+            (outdir / f).write_bytes(base64.b64decode(b64))
+            print(f"[local] {f} {len(b64) * 3 // 4 / 1e6:.1f}MB")
+        return
+    if ref:
+        print(make_ref.remote())
+        return
     res = run.remote(skip_fold=skip_fold)
     s = res["stats"]
     keys = ("nodes", "kernels", "compute_dispatches", "layout_ops",

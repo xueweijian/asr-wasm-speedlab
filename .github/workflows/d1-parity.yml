@@ -1,0 +1,80 @@
+name: d1-parity
+on:
+  workflow_dispatch:
+  push:
+    paths: [d1/**, .github/workflows/d1-parity.yml]
+
+jobs:
+  parity:
+    runs-on: macos-14
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: deps
+        run: |
+          pip install onnx onnxsim onnxruntime numpy
+          cd d1/runtime && npm i puppeteer-core@23
+
+      - name: fetch model + D0 fold gate
+        run: |
+          set -o pipefail
+          mkdir -p d0/out d1/out
+          curl -sL -o /tmp/model.tbz2 \
+            https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-small-ctc-zh-int8-2025-04-01.tar.bz2
+          tar -xf /tmp/model.tbz2
+          MODEL=$(find . -name 'model.int8.onnx' | head -1)
+          WAV=$(find . -path '*test_wavs*' -name '*.wav' | sort | head -1)
+          echo "MODEL=$MODEL WAV=$WAV"
+          python d0/fold.py "$MODEL" d0/out/folded.onnx d0/out/d0stats.json --wav "$WAV" | tail -20
+
+      - name: kgen (IR) + ref (ground truth)
+        run: |
+          set -o pipefail
+          WAV=$(find . -path '*test_wavs*' -name '*.wav' | sort | head -1)
+          python d1/kgen.py d0/out/folded.onnx d1/out | tail -6
+          python d1/ref.py d0/out/folded.onnx "$WAV" d1/runtime/ref | tail -12
+          cp d1/out/kernels.json d1/out/weights.bin d1/runtime/
+
+      - name: kernel-level parity (chunk 0, all intermediates)
+        run: |
+          set -o pipefail
+          cd d1/runtime
+          python3 -m http.server 8080 --bind 127.0.0.1 > /dev/null 2>&1 &
+          SRV=$!
+          sleep 1
+          node drive.mjs "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+            "http://127.0.0.1:8080/parity.html?mode=kernel"
+          RC=$?
+          kill $SRV 2>/dev/null || true
+          exit $RC
+
+      - name: e2e streaming parity (7 chunks)
+        run: |
+          set -o pipefail
+          cd d1/runtime
+          python3 -m http.server 8081 --bind 127.0.0.1 > /dev/null 2>&1 &
+          SRV=$!
+          sleep 1
+          node drive.mjs "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+            "http://127.0.0.1:8081/parity.html?mode=e2e"
+          RC=$?
+          kill $SRV 2>/dev/null || true
+          exit $RC
+
+      - name: upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-parity
+          path: |
+            d1/out/kgen-stats.json
+            d1/out/kernels.json
+            d1/runtime/drive-*.log
+          if-no-files-found: ignore

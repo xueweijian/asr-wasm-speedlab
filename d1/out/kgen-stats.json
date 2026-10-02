@@ -35,10 +35,12 @@
  },
  "unsupported": [],
  "weights": {
-  "count": 327,
-  "total_bytes": 23413825,
+  "count": 923,
+  "total_bytes": 24473304,
   "bytes_by_dtype": {
-   "float32": 1549376,
+   "float32": 2208716,
+   "int64": 400104,
+   "bool": 32,
    "int8": 21864449
   }
  },

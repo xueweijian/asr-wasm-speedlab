@@ -1,0 +1,207 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>D1 WGSL runtime parity</title>
+<style>
+  body { font: 12px/1.45 monospace; margin: 16px; background: #111; color: #ccc; }
+  #out { white-space: pre-wrap; }
+  .ok { color: #6c6; } .bad { color: #e66; } .dim { color: #888; }
+</style>
+</head>
+<body>
+<div id="out">loading…</div>
+<script type="module">
+import { Runtime } from "./rt.js";
+
+const qs = new URLSearchParams(location.search);
+const MODE = qs.get("mode") || "kernel";
+const TOL = parseFloat(qs.get("tol") || "1e-4");
+const STOP = qs.get("stop") !== "0";   // stop at first kernel mismatch
+
+const log = (s, cls) => {
+  const d = document.createElement("div");
+  if (cls) d.className = cls;
+  d.textContent = s;
+  document.getElementById("out").appendChild(d);
+};
+const finish = (obj) => {
+  window.__done = true;
+  window.__result = obj;
+  const d = document.createElement("div");
+  d.id = "result";
+  d.textContent = "RESULT_JSON: " + JSON.stringify(obj);
+  document.body.appendChild(d);
+};
+
+const $ = (f) => fetch(f).then((r) => {
+  if (!r.ok) throw new Error(`fetch ${f}: ${r.status}`);
+  return r;
+});
+
+function refView(manifest, bin, name) {
+  const m = manifest[name];
+  if (!m) return null;
+  const slice = bin.slice(m.offset, m.offset + m.bytes);
+  const dt = m.dtype;
+  if (dt === "float32") return { f: new Float32Array(slice), shape: m.shape, dtype: dt };
+  if (dt === "bool" || dt === "uint8") return { u8: new Uint8Array(slice), shape: m.shape, dtype: dt };
+  if (dt === "int8") return { i8: new Int8Array(slice), shape: m.shape, dtype: dt };
+  if (dt === "int32") return { i32: new Int32Array(slice), shape: m.shape, dtype: dt };
+  if (dt === "int64") return { i64: new BigInt64Array(slice), shape: m.shape, dtype: dt };
+  return { raw: slice, shape: m.shape, dtype: dt };
+}
+
+function cmpTensor(gpuBuf, ref) {
+  // gpuBuf: ArrayBuffer of u32 slots (1 slot per element; int64 -> 2)
+  const n = ref.shape.reduce((a, b) => a * b, 1);
+  let nBad = 0, maxAbs = 0, firstIdx = -1, got = 0, want = 0;
+  const u32 = new Uint32Array(gpuBuf, 0, gpuBuf.byteLength / 4);
+  if (ref.dtype === "float32") {
+    const g = new Float32Array(gpuBuf, 0, n);
+    const f = new Float32Array(u32.buffer === g.buffer ? 0 : 0); // noop
+    for (let i = 0; i < n; i++) {
+      const a = g[i], b = ref.f[i];
+      if (Number.isNaN(a) && Number.isNaN(b)) continue;
+      const d = Math.abs(a - b);
+      if (!(Number.isNaN(a) === Number.isNaN(b)) || d > TOL) {
+        if (firstIdx < 0) { firstIdx = i; got = a; want = b; }
+        nBad++;
+      }
+      if (d > maxAbs) maxAbs = d;
+    }
+  } else {
+    // bool/int comparisons: exact
+    for (let i = 0; i < n; i++) {
+      const a = ref.dtype === "bool" ? (u32[i] !== 0 ? 1 : 0)
+        : ref.dtype === "int8" ? (u32[i] << 24 >> 24)
+        : ref.dtype === "int32" ? (u32[i] | 0)
+        : Number(u32[i]);
+      const b = ref.dtype === "bool" ? (ref.u8[i] !== 0 ? 1 : 0)
+        : ref.dtype === "int8" ? ref.i8[i]
+        : ref.dtype === "int32" ? ref.i32[i]
+        : Number(ref.i64[i]);
+      if (a !== b) { if (firstIdx < 0) { firstIdx = i; got = a; want = b; } nBad++; }
+    }
+  }
+  return { nBad, maxAbs, firstIdx, got, want, n };
+}
+
+async function main() {
+  log(`mode=${MODE} tol=${TOL}`, "dim");
+  const [docJ, wB, featsJ] = await Promise.all([
+    $("kernels.json").then((r) => r.json()),
+    $("weights.bin").then((r) => r.arrayBuffer()),
+    $("ref/feats.json").then((r) => r.json()),
+  ]);
+  log(`kernels=${docJ.kernels.length} weights=${(wB.byteLength / 1e6).toFixed(1)}MB chunks=${featsJ.length}`);
+
+  let manifest = null, bin = null, e2e = null;
+  if (MODE === "kernel") {
+    manifest = await $("ref/chunk0.json").then((r) => r.json());
+    bin = await $("ref/chunk0.bin").then((r) => r.arrayBuffer());
+    log(`ref tensors=${Object.keys(manifest).length} ${(bin.byteLength / 1e6).toFixed(1)}MB`);
+  } else {
+    e2e = await $("ref/e2e.json").then((r) => r.json());
+  }
+
+  const rt = new Runtime(docJ, wB);
+  rt.layout();
+  log(`arena A: ${rt.aU32 * 4 / 1e6}MB (u32 slots: ${rt.aU32})`);
+  rt.expand();
+  const nDisp = rt.groups.reduce((s, g) => s + g.dispatches.length, 0);
+  log(`expanded: groups=${rt.groups.length} dispatches=${nDisp}`);
+  await rt.init(window.navigator);
+  log("gpu init ok; pipelines compiled");
+
+  const stateInputs = docJ.meta.inputs.filter((n) => n !== "x");
+  const outputs = docJ.meta.outputs;
+  const byOut = {};
+  for (const i of docJ.meta.inputs) for (const o of outputs) if (o === "new_" + i) byOut[o] = i;
+
+  const feedChunk = (ci) => {
+    const flat = new Float32Array(featsJ[ci].flat(Infinity).map(Number));
+    rt.writeTensor("x", flat);
+  };
+
+  if (MODE === "kernel") {
+    feedChunk(0);
+    for (const s of stateInputs) rt.zeroTensor(s);
+    let nPass = 0, worst = { maxAbs: 0 }, t0 = performance.now();
+    for (let gi = 0; gi < rt.groups.length; gi++) {
+      const g = rt.groups[gi];
+      rt.runThrough(gi + 1);
+      for (const outName of g.kernel.outputs) {
+        const ref = refView(manifest, bin, outName);
+        if (!ref) continue;  // graph output only? ref has all
+        const gpu = await rt.readTensor(outName);
+        const c = cmpTensor(gpu, ref);
+        if (c.maxAbs > worst.maxAbs) worst = { maxAbs: c.maxAbs, tensor: outName };
+        if (c.nBad > 0) {
+          const k = g.kernel;
+          log(`FAIL kernel#${gi} ${k.kind}[${k.op}] out=${outName} ` +
+              `nBad=${c.nBad}/${c.n} first=${c.firstIdx} got=${c.got} want=${c.want} ` +
+              `maxAbs=${c.maxAbs.toExponential(3)} tol=${TOL}`, "bad");
+          finish({ pass: false, gi, kind: k.kind, op: k.op, tensor: outName,
+                   nBad: c.nBad, n: c.n, maxAbs: c.maxAbs, got: c.got, want: c.want,
+                   nPass, elapsedMs: performance.now() - t0 });
+          return;
+        }
+      }
+      nPass++;
+      if (gi % 200 === 0) log(`  …${gi}/${rt.groups.length} ok (worst ${worst.maxAbs.toExponential(2)} @ ${worst.tensor || "-"})`, "dim");
+    }
+    log(`ALL ${nPass} kernels pass (worst ${worst.maxAbs.toExponential(3)} @ ${worst.tensor})`, "ok");
+    finish({ pass: true, nPass, worstMaxAbs: worst.maxAbs, worstTensor: worst.tensor,
+             elapsedMs: performance.now() - t0 });
+    return;
+  }
+
+  // ---- e2e mode ----
+  const rep = [];
+  for (let ci = 0; ci < featsJ.length; ci++) {
+    feedChunk(ci);
+    if (ci === 0) for (const s of stateInputs) rt.zeroTensor(s);
+    const t0 = performance.now();
+    rt.runThrough(rt.groups.length);
+    const lpBuf = await rt.readTensor("log_probs");
+    const lp = new Float32Array(lpBuf, 0, lpBuf.byteLength / 4);
+    const ref = e2e.log_probs[ci].flat(Infinity);
+    let maxAbs = 0, nBad = 0;
+    for (let i = 0; i < ref.length; i++) {
+      const d = Math.abs(lp[i] - ref[i]);
+      if (d > maxAbs) maxAbs = d;
+      if (d > TOL) nBad++;
+    }
+    // argmax per frame
+    const frames = e2e.shapes.log_probs;
+    const T = frames[1], V = frames[2];
+    let amx = 0;
+    for (let t = 0; t < T; t++) {
+      let bi = 0, bv = -1e30;
+      for (let v = 0; v < V; v++) { const x = lp[t * V + v]; if (x > bv) { bv = x; bi = v; } }
+      let ri = 0, rv = -1e30;
+      for (let v = 0; v < V; v++) { const x = ref[t * V + v]; if (x > rv) { rv = x; ri = v; } }
+      if (bi !== ri) amx++;
+    }
+    rep.push({ chunk: ci, maxAbs, nBad, argmaxMismatch: amx, ms: Math.round(performance.now() - t0) });
+    log(`chunk${ci}: maxAbs=${maxAbs.toExponential(3)} nBad>${TOL}=${nBad} argmaxMismatch=${amx}/${T} ${rep[ci].ms}ms`,
+        maxAbs <= TOL ? "ok" : "bad");
+    // state feedback
+    for (const [o, i] of Object.entries(byOut)) {
+      if (o === "log_probs") continue;
+      const buf = await rt.readTensor(o);
+      rt.writeTensor(i, new Float32Array(buf));
+    }
+  }
+  const pass = rep.every((r) => r.maxAbs <= TOL && r.argmaxMismatch === 0);
+  finish({ pass, chunks: rep });
+}
+
+main().catch((e) => {
+  log("ERROR " + (e && e.stack || e), "bad");
+  finish({ pass: false, error: String(e) });
+});
+</script>
+</body>
+</html>
