@@ -327,6 +327,8 @@ fn main(@builtin(local_invocation_id) lid: vec3<u32>,
     stfA(P.outOff, mn2);
     stfA(P.outOff + 1u, scale);
     A[P.outOff + 2u] = u32(zp);
+    if (P.op2.y != 0u) { stfA(P.op2.y, scale); }   // DQL side: y_scale
+    if (P.op2.z != 0u) { A[P.op2.z] = u32(zp); }   // DQL side: y_zero_point
   }
 }
 `;

@@ -259,9 +259,26 @@ def main():
         if dql is None or dql.output[0] != n.input[0]:
             continue
         chain, last = dq_chain(n)
+        dql_idx = producer[n.input[0]]
         if chain and any(k == "mul" for k, *_ in chain):
-            dql_idx = producer[n.input[0]]
             eaten = {dql_idx, idx} | {c for _, c, *_ in chain}
+            # side outputs: DQL's y_scale/y_zp may have consumers outside the
+            # fused chain (sherpa lazy-scale pattern) — qstat writes them too
+            side = {}
+            for tag, out_i in (("side_scale", 1), ("side_zp", 2)):
+                if len(dql.output) > out_i:
+                    ext = [c for c in consumers.get(dql.output[out_i], [])
+                           if c not in eaten]
+                    if ext:
+                        side[tag] = dql.output[out_i]
+            # bail out only if y leaks to a NON-MatMulInteger consumer;
+            # a second MMI sharing the same quantized x fuses independently
+            # (its qstat recomputes — correct, mildly redundant)
+            leak = any(g.node[c].op_type != "MatMulInteger"
+                       for c in consumers.get(dql.output[0], [])
+                       if c not in eaten and c != idx)
+            if leak:
+                continue
             scale_init = [r[0] for k, c, *r in chain if k == "mul" and r and r[0] in init]
             refs = [i for i in list(n.input[1:]) + list(scale_init) if i in init]
             w_name = n.input[1]
@@ -270,7 +287,7 @@ def main():
                             "outputs": [last],
                             "fused": ["DynamicQuantizeLinear", "MatMulInteger"] +
                                      [g.node[c].op_type for _, c, *_ in chain],
-                            "refs": refs}
+                            "refs": refs, **side}
             consumed |= eaten
 
     # ---- pass 2: emit kernels in topo order ----
@@ -281,9 +298,13 @@ def main():
         if idx in fusions:
             f = fusions[idx]
             weight_refs.update(f["refs"])
-            kernels.append({"kind": "matmul_int8_dq", "op": op,
-                            "inputs": f["inputs"], "outputs": f["outputs"],
-                            "attrs": attrs_of(n), "fused": f["fused"]})
+            entry = {"kind": "matmul_int8_dq", "op": op,
+                     "inputs": f["inputs"], "outputs": f["outputs"],
+                     "attrs": attrs_of(n), "fused": f["fused"]}
+            for tag in ("side_scale", "side_zp"):
+                if tag in f:
+                    entry[tag] = f[tag]
+            kernels.append(entry)
             continue
         if op in ("MatMul", "Gemm"):
             for i in n.input:

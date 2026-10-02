@@ -106,7 +106,8 @@ export class Runtime {
         }
       } else if (k.kind === "matmul_int8_dq") {
         g.dispatches.push(this.encode({ kind: "qstat", op: "qstat", attrs: {},
-          inputs: [k.inputs[0]], outputs: k.outputs }, ki));
+          inputs: [k.inputs[0]], outputs: k.outputs,
+          __side_scale: k.side_scale, __side_zp: k.side_zp }, ki));
         g.dispatches.push(this.encode({ kind: "qgemm", op: "qgemm", attrs: {},
           inputs: k.inputs, outputs: k.outputs }, ki));
       } else if (k.kind === "layout" && k.op === "Concat") {
@@ -326,6 +327,9 @@ export class Runtime {
       putIn(0, k.inputs[0]);
       w[1] = n; w[2] = 4; w[3] = 1;
       w[40] = this.scratchOfKernel(ki);
+      const sideS = k.__side_scale ? (this.A.get(k.__side_scale) ?? fail("no slot " + k.__side_scale)) : 0;
+      const sideZ = k.__side_zp ? (this.A.get(k.__side_zp) ?? fail("no slot " + k.__side_zp)) : 0;
+      opWords(2, [this.scratchOfKernel(ki), sideS, sideZ, 0]);
       return { pipe: "qstat", nOut: 1, words: w, wg: 1 };
     }
     if (k.kind === "qgemm") {
