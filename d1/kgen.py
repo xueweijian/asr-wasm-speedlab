@@ -17,11 +17,33 @@ import os
 
 import numpy as np
 import onnx
+from onnxsim import simplify
 from onnx import numpy_helper
 
 MODEL = sys.argv[1]
 OUT_DIR = sys.argv[2]
 MAX_JSON = int(sys.argv[sys.argv.index("--max-kernels-json") + 1]) if "--max-kernels-json" in sys.argv else 4000
+STATIC_SHAPES = "--dynamic" not in sys.argv
+
+
+def static_shape_pass(m):
+    """Re-simplify under the deployment contract: batch=1, chunk=77, fixed
+    state shapes (D0-verified). Kills the dynamic-shape plumbing that the
+    fold pass had to keep. Returns (simplified, parity_report|None)."""
+    import os
+    os.environ.setdefault("ONNXSIM_FIXED_POINT_ITERS", "300")
+    overwrite = {}
+    for vi in m.graph.input:
+        dims = [d.dim_value if d.HasField("dim_value") and d.dim_value > 0 else 1
+                for d in vi.type.tensor_type.shape.dim]
+        overwrite[vi.name] = dims
+    print(f"[static] overwrite_input_shapes: {list(overwrite.items())[:3]} ...")
+    sm, ok = simplify(m, overwrite_input_shapes=overwrite)
+    if not ok:
+        raise SystemExit("static-shape simplify check failed")
+    # numerical equivalence: onnxsim's internal check here + the D1 runtime
+    # parity gate (WGSL vs ORT-orig) is the authoritative guard.
+    return sm
 
 ELEMENTWISE = {"Add", "Sub", "Mul", "Div", "Max", "Min", "Exp", "Log", "Tanh",
                "Sigmoid", "Pow", "Abs", "Neg", "Sqrt", "Relu", "Gelu", "Erf"}
@@ -51,8 +73,65 @@ def attrs_of(n):
     return a
 
 
+def chain_fuse(kernels):
+    """Greedy fusion of consecutive single-consumer elementwise/control/reduce
+    kernels into one `fuseq` kernel (straight-line op sequence for runtime
+    codegen). Intermediates must have exactly one consumer to be absorbable."""
+    FUSABLE = {"elementwise", "control", "reduce"}
+    cons = {}
+    for i, k in enumerate(kernels):
+        for t in k["inputs"]:
+            cons.setdefault(t, []).append(i)
+
+    def single_consumer(i):
+        outs = kernels[i]["outputs"]
+        cs = [c for t in outs for c in cons.get(t, []) if c != i]
+        return cs[0] if len(cs) == 1 and len(outs) == 1 else None
+
+    member = [False] * len(kernels)
+    out = []
+    for i, k in enumerate(kernels):
+        if member[i]:
+            continue
+        if k["kind"] not in FUSABLE:
+            out.append(k)
+            continue
+        chain = [i]
+        member[i] = True
+        cur = i
+        while True:
+            nxt = single_consumer(cur)
+            if (nxt is not None and not member[nxt] and kernels[nxt]["kind"] in FUSABLE
+                    and nxt > cur):
+                chain.append(nxt)
+                member[nxt] = True
+                cur = nxt
+            else:
+                break
+        if len(chain) == 1:
+            out.append(kernels[i])
+            continue
+        internal = {t for j in chain[:-1] for t in kernels[j]["outputs"]}
+        inputs = []
+        for j in chain:
+            for t in kernels[j]["inputs"]:
+                if t not in internal and t not in inputs:
+                    inputs.append(t)
+        seq = [{"op": kernels[j]["op"], "attrs": kernels[j]["attrs"]} for j in chain]
+        out.append({"kind": "fuseq", "op": "fuseq", "seq": seq,
+                    "inputs": inputs, "outputs": kernels[chain[-1]]["outputs"],
+                    "fused_from": len(chain)})
+    n_fused = sum(k.get("fused_from", 0) for k in out if k["kind"] == "fuseq")
+    n_chains = sum(1 for k in out if k["kind"] == "fuseq")
+    print(f"[fuseq] {n_fused} nodes fused into {n_chains} chain kernels "
+          f"(avg {n_fused/max(n_chains,1):.1f})")
+    return out
+
+
 def main():
     m = onnx.load(MODEL)
+    if STATIC_SHAPES:
+        m = static_shape_pass(m)
     g = m.graph
 
     init = {i.name: i for i in g.initializer}
@@ -170,6 +249,9 @@ def main():
         kernels.append({"kind": "UNSUPPORTED", "op": op,
                         "inputs": list(n.input), "outputs": list(n.output),
                         "attrs": attrs_of(n)})
+
+    # ---- pass 3: elementwise/control/reduce chain fusion (fuseq) ----
+    kernels = chain_fuse(kernels)
 
     # ---- weights packing ----
     os.makedirs(OUT_DIR, exist_ok=True)
