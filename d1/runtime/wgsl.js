@@ -346,8 +346,11 @@ fn main(@builtin(global_invocation_id) g: vec3<u32>) {
   let b = g.x / (N * M);
   let aScale = ldfA(P.op2.x + 1u);
   let aZp = i32(A[P.op2.x + 2u]);
+  // single dequant multiplier: init w_scale x aScale, OR the lazy combined
+  // tensor (x_scale*w_scale — already includes aScale, do NOT multiply again)
   var wScale = bitcast<f32>(P.op1.x);
-  if (P.op2.w != 0u) { wScale = wScale * ldfA(P.op2.w); }  // lazy-scale tensor
+  if (P.op2.w != 0u) { wScale = ldfA(P.op2.w); }
+  else { wScale = wScale * aScale; }
   let bZp = i32(P.op1.y);
   var acc = 0;
   for (var k: u32 = 0u; k < K; k++) {
