@@ -280,6 +280,9 @@ def main():
             if leak:
                 continue
             scale_init = [r[0] for k, c, *r in chain if k == "mul" and r and r[0] in init]
+            scale_tensor = next((r[0] for k, c, *r in chain
+                                 if k == "mul" and r and r[0] not in init
+                                 and r[0] not in dql.output), None)
             refs = [i for i in list(n.input[1:]) + list(scale_init) if i in init]
             w_name = n.input[1]
             extras = [r for r in refs if r != w_name]  # w_zp / w_scale inits
@@ -288,6 +291,8 @@ def main():
                             "fused": ["DynamicQuantizeLinear", "MatMulInteger"] +
                                      [g.node[c].op_type for _, c, *_ in chain],
                             "refs": refs, **side}
+            if scale_tensor:
+                fusions[idx]["scale_tensor"] = scale_tensor
             consumed |= eaten
 
     # ---- pass 2: emit kernels in topo order ----
@@ -301,7 +306,7 @@ def main():
             entry = {"kind": "matmul_int8_dq", "op": op,
                      "inputs": f["inputs"], "outputs": f["outputs"],
                      "attrs": attrs_of(n), "fused": f["fused"]}
-            for tag in ("side_scale", "side_zp"):
+            for tag in ("side_scale", "side_zp", "scale_tensor"):
                 if tag in f:
                     entry[tag] = f[tag]
             kernels.append(entry)

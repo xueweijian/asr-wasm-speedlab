@@ -95,8 +95,9 @@ export class Runtime {
   }
 
   expand() {
+    const groups = [];
     this.doc.kernels.forEach((k, ki) => {
-      const g = { kernel: k, dispatches: [] };
+      const g = { kernel: k, dispatches: [], groupIdx: ki };
       if (k.kind === "fuseq") {
         for (const step of k.seq) {
           const kind = step.op in ELEM_OP ? "elem" : (step.op.startsWith("Reduce") ? "reduce" : null);
@@ -105,11 +106,21 @@ export class Runtime {
             inputs: step.inputs, outputs: step.outputs }, ki));
         }
       } else if (k.kind === "matmul_int8_dq") {
+        const pseudo = "@q" + ki;
         g.dispatches.push(this.encode({ kind: "qstat", op: "qstat", attrs: {},
           inputs: [k.inputs[0]], outputs: k.outputs,
           __side_scale: k.side_scale, __side_zp: k.side_zp }, ki));
         g.dispatches.push(this.encode({ kind: "qgemm", op: "qgemm", attrs: {},
-          inputs: k.inputs, outputs: k.outputs }, ki));
+          inputs: k.inputs, outputs: k.outputs,
+          __scale_tensor: k.scale_tensor }, ki));
+        // dependency wiring: qstat -> scratch pseudo -> qgemm; side outputs
+        // feed external consumers; scale_tensor gates qgemm
+        const q0 = g.dispatches[g.dispatches.length - 2];
+        const q1 = g.dispatches[g.dispatches.length - 1];
+        q0.deps = { in: [k.inputs[0]],
+                    out: [k.side_scale, k.side_zp, pseudo].filter(Boolean) };
+        q1.deps = { in: [...k.inputs, k.scale_tensor, pseudo].filter(Boolean),
+                    out: [...k.outputs] };
       } else if (k.kind === "layout" && k.op === "Concat") {
         const rank = this.shapeOf(k.outputs[0]).length;
         const axis = (k.attrs.axis !== undefined ? k.attrs.axis : this.wVal(k.inputs[1])[0]);
@@ -134,9 +145,60 @@ export class Runtime {
         g.dispatches.push(this.encode({ kind: map[k.kind], op: k.op,
           attrs: k.attrs, inputs: k.inputs, outputs: k.outputs }, ki));
       }
-      this.groups.push(g);
+      for (const d of g.dispatches) {
+        if (!d.deps) d.deps = { in: [...k.inputs], out: [...k.outputs] };
+        d.groupIdx = ki;
+      }
+      groups.push(g);
     });
+    this.groups = groups;
+    this.topoSchedule();
     return this;
+  }
+
+  // ---- global dispatch scheduling (Kahn, stable) ----
+  // Kernel list order from kgen is advisory; true data deps (incl. qstat
+  // side outputs and lazy-scale tensors) decide execution order.
+  topoSchedule() {
+    const all = [];
+    for (const g of this.groups) for (const d of g.dispatches) all.push(d);
+    const weight = new Set(this.wOf.keys());
+    const prodOf = new Map();  // tensor -> dispatch
+    for (const d of all) for (const o of d.deps.out) prodOf.set(o, d);
+    const indeg = new Map(all.map((d) => [d, 0]));
+    const outs = new Map(all.map((d) => [d, []]));
+    for (const d of all) {
+      for (const t of d.deps.in) {
+        if (weight.has(t)) continue;
+        const p = prodOf.get(t);
+        if (p && p !== d) {
+          indeg.set(d, indeg.get(d) + 1);
+          outs.get(p).push(d);
+        }
+      }
+    }
+    const ready = all.filter((d) => indeg.get(d) === 0);
+    const order = [];
+    while (ready.length) {
+      const d = ready.shift();
+      order.push(d);
+      for (const c of outs.get(d)) {
+        indeg.set(c, indeg.get(c) - 1);
+        if (indeg.get(c) === 0) ready.push(c);
+      }
+    }
+    if (order.length !== all.length) fail("dispatch schedule has a cycle");
+    // flatten back into groups; each group keeps its dispatches in order
+    const byGroup = new Map();
+    for (const d of order) {
+      if (!byGroup.has(d.groupIdx)) byGroup.set(d.groupIdx, []);
+      byGroup.get(d.groupIdx).push(d);
+    }
+    this.schedule = order;
+    this.groupEnd = new Array(this.groups.length).fill(0);
+    for (let i = 0; i < order.length; i++) {
+      this.groupEnd[order[i].groupIdx] = i + 1;
+    }
   }
 
   encode(k, ki, extra = {}) {
@@ -350,7 +412,8 @@ export class Runtime {
       setOut();
       opWords(0, [M, N, K, 0]);
       opWords(1, [f32b(wScale), bZp, 0, 0]);
-      opWords(2, [this.scratchOfKernel(ki), 0, 0, 0]);
+      const stSlot = k.__scale_tensor ? (this.A.get(k.__scale_tensor) ?? fail("no slot " + k.__scale_tensor)) : 0;
+      opWords(2, [this.scratchOfKernel(ki), 0, 0, stSlot]);
       return { pipe: "qgemm", nOut, words: w, wg: Math.ceil(nOut / 64) };
     }
     if (k.kind === "conv") {
@@ -456,14 +519,15 @@ export class Runtime {
   }
 
   runThrough(giEnd) {
+    const cut = giEnd >= this.groupEnd.length ? this.schedule.length
+      : this.groupEnd[giEnd];
     const enc = this.device.createCommandEncoder();
     const pass = enc.beginComputePass();
-    for (let gi = 0; gi < giEnd; gi++) {
-      for (const d of this.groups[gi].dispatches) {
-        pass.setPipeline(this.pipes[d.pipe]);
-        pass.setBindGroup(0, this.bg, [d.block * 512]);
-        pass.dispatchWorkgroups(d.wg);
-      }
+    for (let i = 0; i < cut; i++) {
+      const d = this.schedule[i];
+      pass.setPipeline(this.pipes[d.pipe]);
+      pass.setBindGroup(0, this.bg, [d.block * 512]);
+      pass.dispatchWorkgroups(d.wg);
     }
     pass.end();
     this.device.queue.submit([enc.finish()]);
