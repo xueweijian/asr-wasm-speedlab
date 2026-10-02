@@ -533,6 +533,17 @@ export class Runtime {
     this.device.queue.submit([enc.finish()]);
   }
 
+  async readRaw(offU32, nWords) {
+    const staging = this.device.createBuffer({ size: nWords * 4, usage: BUF.MAP_READ | BUF.COPY_DST });
+    const enc = this.device.createCommandEncoder();
+    enc.copyBufferToBuffer(this.aBuf, offU32 * 4, staging, 0, nWords * 4);
+    this.device.queue.submit([enc.finish()]);
+    await staging.mapAsync(GPUMapMode.READ);
+    const copy = new Uint32Array(staging.getMappedRange().slice(0));
+    staging.unmap(); staging.destroy();
+    return copy;
+  }
+
   async readTensor(name) {
     const off = this.A.get(name) ?? fail("read no slot " + name);
     const dt = this.dtypeOf(name);

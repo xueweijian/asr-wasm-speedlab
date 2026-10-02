@@ -127,6 +127,32 @@ async function main() {
   if (MODE === "kernel") {
     feedChunk(0);
     for (const s of stateInputs) rt.zeroTensor(s);
+    const DBG = qs.get("debug");
+    if (DBG !== null) {
+      const gi = parseInt(DBG);
+      rt.runThrough(gi + 1);
+      const g = rt.groups[gi];
+      const w = g.dispatches[g.dispatches.length - 1].words;
+      const o2 = Array.from(w.slice(52, 56));
+      const o1 = Array.from(w.slice(48, 52));
+      const f = (u) => { const b = new ArrayBuffer(4); new Uint32Array(b)[0] = u; return new Float32Array(b)[0]; };
+      log(`DBG kernel#${gi} ${g.kernel.kind}[${g.kernel.op}] op1=${o1} (${f(o1[0])}) op2=${o2}`, "dim");
+      if (g.kernel.kind === "matmul_int8_dq") {
+        const scr = o2[0];
+        const vals = new Float32Array(await rt.readTensor("@raw").catch?.() ?? new ArrayBuffer(0)).length ? null : null;
+        log(`DBG scratch@${scr}: reading 3 words`, "dim");
+        const raw = await rt.readRaw(scr, 3);
+        log(`DBG scratch min=${f(raw[0])} scale=${f(raw[1])} zp=${raw[2]}`, "dim");
+        if (o2[3]) { const lz = await rt.readRaw(o2[3], 1); log(`DBG lazy=${f(lz[0])}`, "dim"); }
+      }
+      const outBuf = await rt.readTensor(g.kernel.outputs[0]);
+      const outF = new Float32Array(outBuf);
+      const ref0 = manifest && refView(manifest, bin, g.kernel.outputs[0]);
+      log(`DBG out[0..3]=${Array.from(outF.slice(0, 4)).map((v) => v.toFixed(4))}` +
+          (ref0 ? ` want[0..3]=${Array.from(ref0.f ? ref0.f.slice(0, 4) : []).map((v) => v.toFixed(4))}` : ""), "dim");
+      finish({ pass: true, debug: true });
+      return;
+    }
     let nPass = 0, worst = { maxAbs: 0 }, t0 = performance.now();
     for (let gi = 0; gi < rt.groups.length; gi++) {
       const g = rt.groups[gi];
