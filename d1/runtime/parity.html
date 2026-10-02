@@ -178,9 +178,18 @@ async function main() {
           log(`FAIL kernel#${gi} ${k.kind}[${k.op}] out=${outName} ` +
               `nBad=${c.nBad}/${c.n} first=${c.firstIdx} got=${c.got} want=${c.want} ` +
               `maxAbs=${c.maxAbs.toExponential(3)} tol=${TOL}`, "bad");
+          // input-side compare: distinguishes upstream/order bugs from kernel bugs
+          const inRep = [];
+          for (const inName of k.inputs) {
+            const iref = refView(manifest, bin, inName);
+            if (!iref || !rt.A.has(inName)) { inRep.push([inName, "noref"]); continue; }
+            const ig = await rt.readTensor(inName);
+            const ic = cmpTensor(ig, iref);
+            inRep.push([inName, ic.nBad === 0 ? "OK" : `BAD ${ic.nBad}/${ic.n} got=${ic.got} want=${ic.want}`]);
+          }
           finish({ pass: false, gi, kind: k.kind, op: k.op, tensor: outName,
                    nBad: c.nBad, n: c.n, maxAbs: c.maxAbs, got: c.got, want: c.want,
-                   nPass, elapsedMs: performance.now() - t0 });
+                   inputs: inRep, nPass, elapsedMs: performance.now() - t0 });
           return;
         }
       }
