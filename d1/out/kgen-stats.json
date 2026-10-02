@@ -36,12 +36,12 @@
  "unsupported": [],
  "weights": {
   "count": 923,
-  "total_bytes": 24473304,
+  "total_bytes": 24473400,
   "bytes_by_dtype": {
    "float32": 2208716,
    "int64": 400104,
-   "bool": 32,
-   "int8": 21864449
+   "bool": 128,
+   "int8": 21864452
   }
  },
  "fused_matmul_int8_dq": 206,

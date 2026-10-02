@@ -351,10 +351,22 @@ def main():
     # WGSL storage buffers have no 8-bit types — the arena is read as u32) ----
     os.makedirs(OUT_DIR, exist_ok=True)
     manifest, blob, off = [], [], 0
+    # MMI int8 weights stay packed (qgemm unpacks 4/u32); every other 8-bit
+    # initializer (bool masks, index consts) is widened to 1 u32 per element
+    # so the arena's u32 view reads element i at W[off + i]
+    mmi_w = set()
+    for idx, n in enumerate(g.node):
+        if idx in fusions:
+            mmi_w.add(n.input[1])
     for name in sorted(weight_refs):
         t = init[name]
         arr = numpy_helper.to_array(t)
-        b = arr.tobytes()
+        if name in mmi_w:
+            b = arr.tobytes()
+        elif arr.dtype in (np.bool_, np.int8, np.uint8):
+            b = arr.astype(np.uint32).tobytes()
+        else:
+            b = arr.tobytes()
         pad = (-off) & 3
         if pad:
             blob.append(b"\x00" * pad)

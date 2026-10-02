@@ -46,7 +46,9 @@ export class Runtime {
       if (m.dtype === "int64") out.push(dv.getBigInt64(i * 8, true));
       else if (m.dtype === "int32") out.push(dv.getInt32(i * 4, true));
       else if (m.dtype === "float32") out.push(dv.getFloat32(i * 4, true));
-      else if (m.dtype === "int8") out.push(dv.getInt8(i));
+      // 8-bit initializers are widened to u32/elem in weights.bin
+      else if (m.dtype === "int8") out.push(dv.getInt32(i * 4, true));
+      else if (m.dtype === "bool") out.push(dv.getUint32(i * 4, true));
       else fail("wVal dtype " + m.dtype);
     }
     return out;
