@@ -154,7 +154,20 @@ fn main(@builtin(global_invocation_id) g: vec3<u32>) {
     else if (o == ${OP.SUB}) { v = v - w; }
     else if (o == ${OP.MUL}) { v = v * w; }
     else if (o == ${OP.DIV}) { v = v / w; }
-    else if (o == ${OP.POW}) { v = pow(v, w); }
+    else if (o == ${OP.POW}) {
+      // WGSL pow() = exp2(y*log2(x)) -> NaN for negative bases; ORT/C pow
+      // handles negative-base integer exponents (ScaleNorm squares x!)
+      let wi = round(w);
+      if (w == wi && abs(w) <= 32.0) {
+        var base = v; var e = i32(abs(wi)); var r = 1.0;
+        loop {
+          if (e == 0) { break; }
+          if ((e & 1) == 1) { r = r * base; }
+          base = base * base; e = e >> 1;
+        }
+        v = select(r, 1.0 / r, wi < 0.0);
+      } else { v = pow(v, w); }
+    }
     else if (o == ${OP.MAX}) { v = max(v, w); }
     else if (o == ${OP.MIN}) { v = min(v, w); }
     else { }
