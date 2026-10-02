@@ -101,7 +101,7 @@ def chain_fuse(kernels):
         if member[i]:
             continue
         if k["kind"] not in FUSABLE:
-            out.append(k)
+            out.append((i, k))
             continue
         chain = [i]
         member[i] = True
@@ -116,7 +116,7 @@ def chain_fuse(kernels):
             else:
                 break
         if len(chain) == 1:
-            out.append(kernels[i])
+            out.append((i, kernels[i]))
             continue
         internal = {t for j in chain[:-1] for t in kernels[j]["outputs"]}
         inputs = []
@@ -130,9 +130,13 @@ def chain_fuse(kernels):
                 "inputs": list(kernels[j]["inputs"]),
                 "outputs": list(kernels[j]["outputs"])}
                for j in chain]
-        out.append({"kind": "fuseq", "op": "fuseq", "seq": seq,
-                    "inputs": inputs, "outputs": kernels[chain[-1]]["outputs"],
-                    "fused_from": len(chain)})
+        out.append((chain[-1], {"kind": "fuseq", "op": "fuseq", "seq": seq,
+                                "inputs": inputs, "outputs": kernels[chain[-1]]["outputs"],
+                                "fused_from": len(chain)}))
+    # emission position of a chain = its TAIL (last step) position, so no
+    # consumer runs before a producer that sits between the head and tail
+    out.sort(key=lambda p: p[0])
+    out = [k for _, k in out]
     n_fused = sum(k.get("fused_from", 0) for k in out if k["kind"] == "fuseq")
     n_chains = sum(1 for k in out if k["kind"] == "fuseq")
     print(f"[fuseq] {n_fused} nodes fused into {n_chains} chain kernels "
@@ -162,12 +166,50 @@ def tensor_shape_table(m):
     return table
 
 
+def topo_sort_nodes(g):
+    """onnxsim output is NOT guaranteed topologically sorted (ORT tolerates
+    it; a sequential executor does not). Kahn sort by data dependencies."""
+    init = {i.name for i in g.initializer}
+    prod = {}
+    for i, n in enumerate(g.node):
+        for o in n.output:
+            prod[o] = i
+    indeg = [0] * len(g.node)
+    cons = [[] for _ in g.node]
+    for i, n in enumerate(g.node):
+        deps = {prod[t] for t in n.input if t in prod and prod[t] != i}
+        # graph-input consumers see graph outputs re-fed via new_* -> same node
+        indeg[i] = len(deps)
+        for d in deps:
+            cons[d].append(i)
+    from collections import deque
+    q = deque(i for i in range(len(g.node)) if indeg[i] == 0)
+    order = []
+    while q:
+        i = q.popleft()
+        order.append(i)
+        for c in cons[i]:
+            indeg[c] -= 1
+            if indeg[c] == 0:
+                q.append(c)
+    if len(order) != len(g.node):
+        raise SystemExit("topo sort failed: cycle in graph")
+    if order != list(range(len(g.node))):
+        print(f"[topo] reordered {sum(1 for a, b in zip(order, range(len(g.node))) if a != b)} nodes")
+    return order
+
+
 def main():
     m = onnx.load(MODEL)
     if STATIC_SHAPES:
         m = static_shape_pass(m)
     g = m.graph
     tensor_shapes = tensor_shape_table(m)
+    order = topo_sort_nodes(g)
+    if order != list(range(len(g.node))):
+        nodes = [g.node[i] for i in order]
+        del g.node[:]
+        g.node.extend(nodes)
 
     init = {i.name: i for i in g.initializer}
     producer = {}          # tensor name -> producing node index

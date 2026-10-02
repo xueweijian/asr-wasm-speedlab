@@ -7,9 +7,9 @@
   "layout": 686,
   "elementwise": 418,
   "conv": 54,
+  "control": 25,
   "fuseq": 372,
   "matmul_int8_dq": 206,
-  "control": 25,
   "matmul_fp": 60,
   "softmax": 13
  },
