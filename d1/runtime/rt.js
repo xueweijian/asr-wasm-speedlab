@@ -333,13 +333,14 @@ export class Runtime {
       return { pipe: "gather", nOut: w[1], words: w, wg: Math.ceil(w[1] / 64) };
     }
     if (k.kind === "copy") {
-      // implemented as identity GATHER (same semantics, different pipeline —
-      // isolates a suspected Metal issue with the trivial copy shader)
-      const { st } = putIn(0, k.inputs[0]);
+      // identity GATHER with RAW source strides — putIn zeroes strides for
+      // broadcast dims, which would alias reads in a 1:1 copy
+      const rawSh = pad4(this.shapeOf(k.inputs[0]));
+      const rawSt = strides4(rawSh);
+      putIn(0, k.inputs[0]);
       setOut();
-      const dstSt = strides4(outSh4);
-      opWords(0, st.slice(0, 4));
-      opWords(2, dstSt);
+      opWords(0, rawSt);
+      opWords(2, strides4(outSh4));
       opWords(3, [0, 0, 0, 0]);
       const units = nOut * (SLOT[this.dtypeOf(outName)] || 1);
       w[1] = units;
