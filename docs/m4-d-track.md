@@ -40,7 +40,9 @@ fixtures wav ──> ORT fp32 参考输出（真值锚）    ├─ wgsl-runtime
 ```
 
 - 折叠器产出两件套：`kernels.json`（算子序列+权重引用）+ 重排后的权重 blob（fp16 存储，减下载）
-- 内核池初版：elementwise 全家（1 个模板内核泛化）+ matmul_int8（分块累加）+ dq（量化）+ conv1d（im2col 或直接滑窗）+ softmax/logsoftmax + reduce 家族
+- **D1a ✅ kgen v0 上线（2026-10-02，commit a325f98，d1/out/）**：4713 节点 → 4082 逻辑内核，**216 个 MatMulInteger 100% 融合为 matmul_int8_dq**（DQL+MMI+Cast+Mul×2 单内核，dot4I8Packed 目标形态），零 unsupported 算子；权重 326 张量 23.3MB（int8 21.9MB / fp32 1.5MB），已带 manifest（offset/bytes）打包 weights.bin。
+- **dispatch 预算诚实账（普查数据）**：裸内核表 compute=2169 + layout=1913，直接跑必重演 ORT dispatch 悲剧。朴素链融合（elementwise+control 单消费链）只压到 1330——**不够**。可达路径 = 模块级融合（whisper-webgpu 路线）：① shape 静态求值消灭 layout/shape 管道；② 残余 Transpose/Slice/Gather 融进生产者写布局；③ zipformer 模式匹配（LayerNorm/BiasAdd+act/attention 链）整段折叠——12 stack × 6-8 模块内核 + CTC 头 ≈ **72-96 dispatch** 才够到"几十"。kgen v1 按此序推进。
+- 内核池初版范围（普查定案）：matmul_int8_dq(216) + conv(54) + matmul_fp(60) + softmax/logsoftmax(13) + reduce(19) + elementwise 模板 + control(Where/Equal 掩码，静态化后多数进常量)。
 
 ## 4. 分层验证门（继承 diar-gpu-engine 方法论）
 
