@@ -139,8 +139,6 @@ async function main() {
       log(`DBG kernel#${gi} ${g.kernel.kind}[${g.kernel.op}] op1=${o1} (${f(o1[0])}) op2=${o2}`, "dim");
       if (g.kernel.kind === "matmul_int8_dq") {
         const scr = o2[0];
-        const vals = new Float32Array(await rt.readTensor("@raw").catch?.() ?? new ArrayBuffer(0)).length ? null : null;
-        log(`DBG scratch@${scr}: reading 3 words`, "dim");
         const raw = await rt.readRaw(scr, 3);
         log(`DBG scratch min=${f(raw[0])} scale=${f(raw[1])} zp=${raw[2]}`, "dim");
         if (o2[3]) { const lz = await rt.readRaw(o2[3], 1); log(`DBG lazy=${f(lz[0])}`, "dim"); }
