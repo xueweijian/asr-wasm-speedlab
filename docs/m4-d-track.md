@@ -72,7 +72,8 @@ fixtures wav ──> ORT fp32 参考输出（真值锚）    ├─ wgsl-runtime
 
 ## 6. 里程碑定义
 
-- **D0 ✅ 已过门（2026-10-01，results/d0-fold-stats.json）**：onnxsim 折叠 7996→4713 节点（-41.1%）、initializers 1077→923；多 chunk 流式回灌 parity 3/3 chunk **max_abs=0.0（位级）**。⚠️ 退化说明：iid 随机 fbank 尺度输入下 log_probs 双模型同 NaN（掩码零失配）——等价性成立但属弱证明；D1 前补真实 fbank（numpy log-mel 从考卷 wav 提取）复验，期望 log_probs 非 NaN 且逐元素 diff ≤ 1e-4。
+- **D0 ✅✅ 真实 fbank 复验通过（2026-10-02，commit 602a330，results/d0-fold-stats.json）**：tarball 自带考卷 test_wavs/0.wav（5.61s 中文）→ numpy kaldi 风格 fbank（povey 窗/预加重 0.97/80 mel，mean −7.1/std 4.2，教科书分布）→ 7×77 帧分块回灌：**max_abs=0.0（位级）× 7 chunk、零 NaN、掩码零失配**，远超 ≤1e-4 门槛；折叠 7996→4713 节点（-41.1%）不变。随机 smoke 门同轮也位级一致。
+- **状态契约勘误（D1 必读）**：small-ctc（2025-04-01）与旧 14M zipformer v1 契约不同——非空 T_prev 递增，而是**固定尺寸滑动窗口缓存**：cached_key_[256,1,128]、nonlin_attn_[1,1,256,144]、val1/2_[256,1,48]、conv1/2_[1,192,15]（初始全零张量，batch 维=1），states 完全自管理（`new_*` 输出直通回灌，无外部 len 簿记）。 sherpa csrc `Forward(features, states)` 进出即全部语义。**WGSL 运行时的状态布局 = 这组张量**。
 - 输入契约（实测）：x=[?,77,80]（chunk 固定 77 帧）、cached_key/val1/val2 [heads,?,D]（heads=256..32）、cached_nonlin_attn [1,?,heads,192/144]、cached_conv1/2 [?,192/256,15/7]、无 cached_len 输入；输出含 new_embed_states/new_processed_lens（终态 only）。
 - **M4-毕业标准**：真机 Chrome 上 d3 页 RTF ≤ 0.020（打平原生 fp32 单线程）或相对 c4 再 -40%，且 CER 考卷零回归、零 pageerror。
 - 失败判据（提前认输线）：D1 内核池超 15 个 WGSL 文件还没过 parity / D2 真机首测 RTF > 0.03（WebGPU 吞吐不如预期）→ 归档结论，资源转 M5（worker 多线程 ORT 或模型换小）。
