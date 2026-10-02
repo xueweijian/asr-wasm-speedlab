@@ -6,3 +6,4 @@ dist/
 *.tar.bz2
 models/
 emsdk-cache/
+d1/runtime/ref/

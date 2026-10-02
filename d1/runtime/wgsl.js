@@ -169,15 +169,17 @@ fn main(@builtin(global_invocation_id) g: vec3<u32>) {
 `;
 
 // ---- generic strided gather (Transpose / Slice / Concat piece / Expand) ----
-// src = inOff[0] + op3.x + Σ c[d]*op0[d]; op0 = gather strides
+// src = inOff[0] + op3.x + Σ c[d]*op0[d]; dst = outOff + Σ c[d]*op2[d]
+// (op2 = destination strides — concat pieces on non-inner axes scatter)
 const GATHER = PRELUDE + /* wgsl */`
 @compute @workgroup_size(64)
 fn main(@builtin(global_invocation_id) g: vec3<u32>) {
   if (g.x >= P.nOut) { return; }
   let c = coords(g.x);
-  var src = P.inOff.x + P.op3.x
+  var src = P.op3.x
           + c[0]*P.op0.x + c[1]*P.op0.y + c[2]*P.op0.z + c[3]*P.op0.w;
-  A[P.outOff + g.x] = ldInU(0u, src - P.inOff.x);
+  let dst = P.outOff + c[0]*P.op2.x + c[1]*P.op2.y + c[2]*P.op2.z + c[3]*P.op2.w;
+  A[dst] = ldInU(0u, src);
 }
 `;
 

@@ -237,6 +237,12 @@ export class Runtime {
         fail("gather on multi-slot dtype: " + this.dtypeOf(outName));
       }
       opWords(0, g);
+      // destination strides: full-tensor strides for concat pieces (the
+      // piece scatters when the concat axis is not innermost)
+      const dstSt = k.op === "Concat"
+        ? strides4(pad4(this.shapeOf(k.outputs[0])))
+        : strides4(outSh4);
+      opWords(2, dstSt);
       opWords(3, [gOff, 0, 0, 0]);
       return { pipe: "gather", nOut: w[1], words: w, wg: Math.ceil(w[1] / 64) };
     }
