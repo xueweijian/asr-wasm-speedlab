@@ -142,6 +142,39 @@ async function main() {
       }
       return null;
     };
+    const WHOLE = qs.get("whole") !== "0";  // one-shot submit, compare-only
+    if (WHOLE) {
+      rt.runThrough(rt.groups.length);
+      for (let gi = 0; gi < rt.groups.length; gi++) {
+        const g = rt.groups[gi];
+        for (const outName of g.kernel.outputs) {
+          const ref = refView(manifest, bin, outName);
+          if (!ref) continue;
+          const c = cmpTensor(await rt.readTensor(outName), ref);
+          if (c.maxAbs > worst.maxAbs) worst = { maxAbs: c.maxAbs, tensor: outName };
+          if (c.nBad > 0) {
+            const inRep = [];
+            for (const inName of g.kernel.inputs) {
+              const iref = refView(manifest, bin, inName);
+              if (!iref || !rt.A.has(inName)) { inRep.push([inName, "noref"]); continue; }
+              const ic = cmpTensor(await rt.readTensor(inName), iref);
+              inRep.push([inName, ic.nBad === 0 ? "OK" : `BAD ${ic.nBad}/${ic.n}`]);
+            }
+            log(`FAIL(whole) kernel#${gi} ${g.kernel.kind}[${g.kernel.op}] out=${outName} nBad=${c.nBad}/${c.n}`, "bad");
+            finish({ pass: false, mode: "whole", gi, kind: g.kernel.kind, op: g.kernel.op,
+                     tensor: outName, nBad: c.nBad, n: c.n, got: c.got, want: c.want,
+                     inputs: inRep, nPass: gi,
+                     elapsedMs: performance.now() - t0 });
+            return;
+          }
+        }
+        nPass++;
+      }
+      log(`WHOLE PASS ${nPass} kernels (worst ${worst.maxAbs.toExponential(3)} @ ${worst.tensor || "-"})`, "ok");
+      finish({ pass: true, mode: "whole", nPass, worstMaxAbs: worst.maxAbs,
+               worstTensor: worst.tensor, elapsedMs: performance.now() - t0 });
+      return;
+    }
     for (let gi = 0; gi < rt.groups.length; gi++) {
       const g = rt.groups[gi];
       // fuseq: step-by-step compare (GPU NaN localization)
