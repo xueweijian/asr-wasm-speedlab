@@ -333,18 +333,13 @@ export class Runtime {
       return { pipe: "gather", nOut: w[1], words: w, wg: Math.ceil(w[1] / 64) };
     }
     if (k.kind === "copy") {
-      // identity GATHER with RAW source strides — putIn zeroes strides for
-      // broadcast dims, which would alias reads in a 1:1 copy
-      const rawSh = pad4(this.shapeOf(k.inputs[0]));
-      const rawSt = strides4(rawSh);
-      putIn(0, k.inputs[0]);
-      setOut();
-      opWords(0, rawSt);
-      opWords(2, strides4(outSh4));
-      opWords(3, [0, 0, 0, 0]);
+      // Reshape/Squeeze/Unsqueeze with static shapes: FLAT copy (a coordinate
+      // gather breaks when source and target ranks/shapes differ, e.g.
+      // [1,32,128,19] -> [1,32,2432])
+      putIn(0, k.inputs[0]); setOut();
       const units = nOut * (SLOT[this.dtypeOf(outName)] || 1);
       w[1] = units;
-      return { pipe: "gather", nOut: units, words: w, wg: Math.ceil(units / 64) };
+      return { pipe: "copy", nOut: units, words: w, wg: Math.ceil(units / 64) };
     }
     if (k.kind === "gelem") {
       putIn(0, k.inputs[0]); putIn(1, k.inputs[1]); setOut();
