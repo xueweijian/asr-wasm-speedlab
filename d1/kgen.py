@@ -106,7 +106,7 @@ def main():
                     consumed.update({producer[n.input[0]], idx,
                                      *[c for _, c, *_ in chain]})
                     scale_init = [r[0] for k, c, *r in chain if k == "mul" and r and r[0] in init]
-                    for i in n.input[1:] + tuple(scale_init) + tuple(dql.input[1:]):
+                    for i in list(n.input[1:]) + list(scale_init) + list(dql.input[1:]):
                         if i in init:
                             weight_refs.add(i)
                     kernels.append({
