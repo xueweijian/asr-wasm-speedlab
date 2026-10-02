@@ -239,7 +239,10 @@ def main():
         sig = read_wav16k(WAV)
         fb = kaldi_fbank(sig)
         T_frames = fb.shape[0]
-        frames_per_chunk = 32
+        # chunk length from the graph's own x spec (fixed dim 77 for small-ctc)
+        xd = [d.dim_value if d.HasField("dim_value") else 0
+              for d in m.graph.input[0].type.tensor_type.shape.dim]
+        frames_per_chunk = int(xd[1]) if len(xd) > 1 and xd[1] > 0 else 32
         nchunks = min(12, T_frames // frames_per_chunk)
         print(f"[real] wav={os.path.basename(WAV)} {len(sig)/16000:.2f}s "
               f"fbank T={T_frames} chunks={nchunks}")
