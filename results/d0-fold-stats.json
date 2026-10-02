@@ -90,7 +90,8 @@
   "op_kinds": 36
  },
  "node_reduction": 0.4106,
- "parity": [
+ "tol": 0.0001,
+ "parity_random_smoke": [
   {
    "chunk": 0,
    "shape": [
@@ -99,8 +100,8 @@
     1000
    ],
    "max_abs": 0.0,
-   "nan_orig": 16000,
-   "nan_folded": 16000,
+   "nan_orig": 0,
+   "nan_folded": 0,
    "nan_mask_mismatch": 0
   },
   {
@@ -111,8 +112,8 @@
     1000
    ],
    "max_abs": 0.0,
-   "nan_orig": 16000,
-   "nan_folded": 16000,
+   "nan_orig": 0,
+   "nan_folded": 0,
    "nan_mask_mismatch": 0
   },
   {
@@ -123,11 +124,108 @@
     1000
    ],
    "max_abs": 0.0,
-   "nan_orig": 16000,
-   "nan_folded": 16000,
+   "nan_orig": 0,
+   "nan_folded": 0,
    "nan_mask_mismatch": 0
   }
  ],
- "tol": 0.0001,
- "pass": true
+ "real_fbank": {
+  "wav": "0.wav",
+  "seconds": 5.61,
+  "fbank_frames": 559,
+  "fbank_mean": -7.10383415222168,
+  "fbank_std": 4.156545639038086,
+  "fbank_min": -23.02526092529297,
+  "fbank_max": 4.55085563659668,
+  "chunks": 7,
+  "frames_per_chunk": 77
+ },
+ "parity_real": [
+  {
+   "chunk": 0,
+   "shape": [
+    1,
+    16,
+    1000
+   ],
+   "max_abs": 0.0,
+   "nan_orig": 0,
+   "nan_folded": 0,
+   "nan_mask_mismatch": 0
+  },
+  {
+   "chunk": 1,
+   "shape": [
+    1,
+    16,
+    1000
+   ],
+   "max_abs": 0.0,
+   "nan_orig": 0,
+   "nan_folded": 0,
+   "nan_mask_mismatch": 0
+  },
+  {
+   "chunk": 2,
+   "shape": [
+    1,
+    16,
+    1000
+   ],
+   "max_abs": 0.0,
+   "nan_orig": 0,
+   "nan_folded": 0,
+   "nan_mask_mismatch": 0
+  },
+  {
+   "chunk": 3,
+   "shape": [
+    1,
+    16,
+    1000
+   ],
+   "max_abs": 0.0,
+   "nan_orig": 0,
+   "nan_folded": 0,
+   "nan_mask_mismatch": 0
+  },
+  {
+   "chunk": 4,
+   "shape": [
+    1,
+    16,
+    1000
+   ],
+   "max_abs": 0.0,
+   "nan_orig": 0,
+   "nan_folded": 0,
+   "nan_mask_mismatch": 0
+  },
+  {
+   "chunk": 5,
+   "shape": [
+    1,
+    16,
+    1000
+   ],
+   "max_abs": 0.0,
+   "nan_orig": 0,
+   "nan_folded": 0,
+   "nan_mask_mismatch": 0
+  },
+  {
+   "chunk": 6,
+   "shape": [
+    1,
+    16,
+    1000
+   ],
+   "max_abs": 0.0,
+   "nan_orig": 0,
+   "nan_folded": 0,
+   "nan_mask_mismatch": 0
+  }
+ ],
+ "pass": true,
+ "fail_reason": null
 }
