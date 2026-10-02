@@ -106,34 +106,34 @@ def read_wav16k(path):
 
 
 # ---------------- feeds ----------------
-def rand_for(vi, all_inputs, seed, t_frames=32):
-    """Streaming-contract-aware random feeds (smoke gate only)."""
+def zero_state(vi):
+    """sherpa-faithful init states: every non-x input gets a FULL-SIZE zeros
+    tensor. Unknown dims are batch (=1), never time — the small-ctc zipformer2
+    uses fixed-length sliding-window caches (left_context_len=256), and states
+    are fully self-managed via new_* outputs (no external len bookkeeping)."""
+    t = vi.type.tensor_type
+    elem = onnx.TensorProto.DataType.Name(t.elem_type)
+    shape = [(d.dim_value if d.HasField("dim_value") and d.dim_value > 0 else 1)
+             for d in t.shape.dim]
+    if elem == "FLOAT":
+        return np.zeros(shape, np.float32)
+    if elem in ("INT64", "INT32"):
+        return np.zeros(shape, np.int64 if elem == "INT64" else np.int32)
+    if elem == "BOOL":
+        return np.zeros(shape, bool)
+    raise SystemExit(f"unsupported input type {elem} for {vi.name}")
+
+
+def rand_x(vi, seed, t_frames=None):
+    """Random fbank-shaped x (smoke gate only)."""
     rng = np.random.default_rng(seed)
     t = vi.type.tensor_type
     elem = onnx.TensorProto.DataType.Name(t.elem_type)
     dims = [d.dim_value if d.HasField("dim_value") else None for d in t.shape.dim]
-    is_fbank = elem == "FLOAT" and len(dims) == 3 and dims[2] == 80
-    shape = []
-    for i, d in enumerate(dims):
-        if d is not None and d > 0:
-            shape.append(d)
-        elif i == 0:
-            shape.append(1)
-        elif is_fbank and i == 1:
-            shape.append(t_frames)
-        elif not is_fbank and i == 1:
-            shape.append(0)
-        else:
-            shape.append(dims[-1] or 1)
-    if elem == "FLOAT":
-        if is_fbank:
-            return (rng.random(shape).astype(np.float32) * 25.0) - 20.0
-        return rng.standard_normal(shape).astype(np.float32) * 0.5
-    if elem in ("INT64", "INT32"):
-        return np.zeros(shape, dtype=np.int64 if elem == "INT64" else np.int32)
-    if elem == "BOOL":
-        return np.zeros(shape, dtype=bool)
-    raise SystemExit(f"unsupported input type {elem} for {vi.name}")
+    if t_frames is None:
+        t_frames = dims[1] if dims[1] else 32
+    shape = [1, t_frames, dims[2]]
+    return (rng.random(shape).astype(np.float32) * 25.0) - 20.0
 
 
 def dtype_of(vi):
@@ -142,39 +142,20 @@ def dtype_of(vi):
 
 def parity_loop(sess1, sess2, m, chunks, live_required, label):
     """Run both graphs chunk-by-chunk, each feeding back its own states.
-    Int inputs maintained per streaming contract:
-      *processed_lens -> frames already processed before this chunk
-      other *_len     -> T_prev of the fed state tensors
-    Returns (report, worst, failed_reason or None)."""
+    All non-x inputs start as full-size zeros and loop back via new_* outputs
+    (sherpa semantics: Forward(features, states) — states are self-managed)."""
     in_names = [vi.name for vi in m.graph.input]
     out_names = [o.name for o in m.graph.output]
     by_out = {n: i for i in in_names for n in out_names if n == "new_" + i}
 
     def init_state():
-        return {vi.name: rand_for(vi, m.graph.input, seed=7)
-                for vi in m.graph.input if vi.name != "x"}
-
-    def int_feed(states, c, frames_per_chunk):
-        feed = {}
-        for vi in m.graph.input:
-            n = vi.name
-            if n == "x" or n in states:
-                continue
-            if dtype_of(vi) in ("INT64", "INT32"):
-                if "processed" in n:
-                    feed[n] = np.array([frames_per_chunk * c], np.int64)
-                elif "len" in n:
-                    tprev = next(v.shape[1] for v in states.values() if getattr(v, "ndim", 0) == 3)
-                    feed[n] = np.array([tprev], np.int64)
-                else:
-                    feed[n] = np.zeros([1], np.int64)
-        return feed
+        return {vi.name: zero_state(vi) for vi in m.graph.input if vi.name != "x"}
 
     st1, st2 = init_state(), init_state()
     report, worst, fail = [], 0.0, None
     for c, x in enumerate(chunks):
-        f1 = {"x": x, **st1, **int_feed(st1, c, x.shape[1])}
-        f2 = {"x": x, **st2, **int_feed(st2, c, x.shape[1])}
+        f1 = {"x": x, **st1}
+        f2 = {"x": x, **st2}
         o1 = dict(zip(out_names, sess1.run(None, f1)))
         o2 = dict(zip(out_names, sess2.run(None, f2)))
         a, b = o1["log_probs"], o2["log_probs"]
@@ -229,8 +210,15 @@ def main():
               "node_reduction": round(1 - after["nodes"] / before["nodes"], 4),
               "tol": TOL}
 
+    # dump model metadata (T / decode_chunk_len / left_context_len etc.)
+    meta = {p.key: p.value for p in m.metadata_props}
+    if meta:
+        print("--- metadata ---")
+        for k, v in meta.items():
+            print(f"  {k}: {v[:120]}")
+
     # ---- gate A: random smoke (mask symmetry only) ----
-    chunks = [rand_for(m.graph.input[0], m.graph.input, seed=100 + c) for c in range(3)]
+    chunks = [rand_x(m.graph.input[0], seed=100 + c) for c in range(3)]
     rep_a, worst_a, _ = parity_loop(s1, s2, m, chunks, live_required=False, label="rand")
     result["parity_random_smoke"] = rep_a
 
@@ -245,7 +233,9 @@ def main():
         frames_per_chunk = int(xd[1]) if len(xd) > 1 and xd[1] > 0 else 32
         nchunks = min(12, T_frames // frames_per_chunk)
         print(f"[real] wav={os.path.basename(WAV)} {len(sig)/16000:.2f}s "
-              f"fbank T={T_frames} chunks={nchunks}")
+              f"fbank T={T_frames} chunks={nchunks} "
+              f"fbank mean={fb.mean():.2f} std={fb.std():.2f} "
+              f"min={fb.min():.2f} max={fb.max():.2f}")
         result["real_fbank"] = {"wav": os.path.basename(WAV),
                                 "seconds": round(len(sig) / 16000, 2),
                                 "fbank_frames": T_frames,
