@@ -355,7 +355,7 @@ export class Runtime {
         ws = [ws[0], ws[1], 1, ws[2]];
       } else if (inSh.length === 4) {
         padTop = pads[0] ?? 0;
-        padLeft = pads[2] ?? 0;
+        padLeft = pads[1] ?? 0;
       } else fail("conv rank " + inSh.length);
       const [Cout, CinG, KH, KW] = ws;
       const [, Cin, H, W] = inSh;
