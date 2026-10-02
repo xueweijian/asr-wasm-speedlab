@@ -365,6 +365,35 @@ def main():
                         "inputs": list(n.input), "outputs": list(n.output),
                         "attrs": attrs_of(n)})
 
+    # ---- pass 2b: fusion position fix (side outputs) ----
+    # A fused matmul_int8_dq inherits the MMI's graph position, but its DQL
+    # side outputs (y_scale/y_zp) may have consumers EARLIER in topo order.
+    # Move such kernels to just before their earliest side consumer.
+    for _ in range(len(kernels)):
+        moved = False
+        for ki in range(len(kernels)):
+            k = kernels[ki]
+            if k.get("kind") != "matmul_int8_dq":
+                continue
+            sides = [s for s in (k.get("side_scale"), k.get("side_zp")) if s]
+            if not sides:
+                continue
+            earliest = len(kernels)
+            for cj in range(ki):
+                cand = kernels[cj]
+                ins = list(cand["inputs"])
+                if cand["kind"] == "fuseq":
+                    for st in cand["seq"]:
+                        ins += st["inputs"]
+                if any(s in ins for s in sides):
+                    earliest = min(earliest, cj)
+            if earliest < ki:
+                kernels.insert(earliest, kernels.pop(ki))
+                moved = True
+                break
+        if not moved:
+            break
+
     # ---- pass 3: elementwise/control/reduce chain fusion (fuseq) ----
     kernels = chain_fuse(kernels)
 
