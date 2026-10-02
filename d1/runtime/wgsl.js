@@ -375,8 +375,8 @@ fn main(@builtin(global_invocation_id) g: vec3<u32>) {
   let oh = (g.x / W_out) % H_out;
   let co = g.x / (W_out * H_out);
   var acc = 0.0;
-  let wBase = P.inOff.y;  // weight element offset (fp32, un-packed)
-  let cin0 = co * CinG;
+  // grouped conv: input channel base for co's group (group=1 -> always 0)
+  let cin0 = (co / (Cout / group)) * CinG;
   for (var ci: u32 = 0u; ci < CinG; ci++) {
     for (var kh: u32 = 0u; kh < KH; kh++) {
       let ih = oh * P.op2.x + kh * P.op2.z - P.op3.x;
