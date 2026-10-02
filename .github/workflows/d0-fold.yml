@@ -24,12 +24,19 @@ jobs:
           curl -sSL -o ctc.tar.bz2 https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-small-ctc-zh-int8-2025-04-01.tar.bz2
           tar xf ctc.tar.bz2 && rm -f ctc.tar.bz2
           find . -name '*.onnx' -path '*ctc*' | head
-      - name: Fold + parity gate
+      - name: Fold + parity gate (real fbank)
         run: |
           M=$(find . -name 'model*.onnx' -path '*ctc*' | head -1)
           [ -n "$M" ] || { echo "ctc model not found"; exit 1; }
           echo "model: $M"
-          python d0/fold.py "$M" /tmp/folded.onnx results/d0-fold-stats.json
+          W=$(find . -name '*.wav' -not -path './.git/*' | sort | head -1)
+          if [ -z "$W" ]; then
+            echo "no wav in tarball; fetching icefall test wav"
+            curl -sSL -o /tmp/test.wav https://github.com/k2-fsa/icefall/raw/master/egs/librispeech/ASR/test_wavs/1089-134686-0001.wav
+            W=/tmp/test.wav
+          fi
+          echo "wav: $W"
+          python d0/fold.py "$M" /tmp/folded.onnx results/d0-fold-stats.json --wav "$W"
       - uses: actions/upload-artifact@v4
         with:
           name: folded-ctc

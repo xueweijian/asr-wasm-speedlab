@@ -5,13 +5,23 @@ Pipeline:
   1. Load model.onnx, report node/ops stats (before)
   2. onnxsim simplify (constant folding + shape inference + dead code elimination)
   3. Report stats (after); assert node reduction
-  4. Parity gate: run original vs folded in onnxruntime (CPU fp32) on random
-     inputs shaped from the model's own input specs; elementwise max-abs/rel diff.
-Exit non-zero if parity fails or folding explodes.
+  4. Parity gate A (random smoke): iid noise chunks, deployment-semantics state
+     feedback. Historically drives the CTC head to NaN — kept only as a
+     mask-symmetry smoke, NOT the pass criterion.
+  5. Parity gate B (real fbank, THE gate): 16 kHz speech -> numpy kaldi-style
+     fbank (povey window / preemph 0.97 / 80 mel bins) -> chunked streaming
+     with correct cached_len/processed_lens maintenance. Requires:
+       - log_probs live (zero NaN) in BOTH graphs  (liveness gate)
+       - NaN masks identical
+       - elementwise max|diff| <= 1e-4
+Exit non-zero if any gate fails or folding explodes.
+
+Usage: fold.py MODEL.onnx OUT.onnx STATS.json [--wav path/to/speech.wav]
 """
 import json
 import sys
 import os
+import wave
 
 import numpy as np
 import onnx
@@ -20,6 +30,11 @@ from onnxsim import simplify
 MODEL = sys.argv[1] if len(sys.argv) > 1 else "model.onnx"
 OUT = sys.argv[2] if len(sys.argv) > 2 else "folded.onnx"
 STATS = sys.argv[3] if len(sys.argv) > 3 else "results/d0-fold-stats.json"
+WAV = None
+if "--wav" in sys.argv:
+    WAV = sys.argv[sys.argv.index("--wav") + 1]
+TOL = 1e-4  # fp32 folding on int8-quantized graph: quant params are constants,
+            # folded DQ arithmetic must be bit-close (1e-4 headroom for op reordering)
 
 
 def stats_of(m):
@@ -32,13 +47,67 @@ def stats_of(m):
             "initializer_bytes": init_bytes, "op_kinds": len(ops)}
 
 
-def rand_for(vi, all_inputs, seed):
-    """Streaming-contract-aware random feeds.
+# ---------------- real fbank: numpy kaldi-style ----------------
+def hz_to_mel(f):
+    return 1127.0 * np.log(1.0 + f / 700.0)
 
-    zipformer-ctc streaming inputs: x [N,T,80] fbank; cached_len/processed_lens
-    [N] int64; cached_avg/key/val/val2 [N,T_prev,D] float states (initially empty).
-    Unknown dims: batch->1, x's time->32, state time->0 (initial state).
-    """
+
+def mel_to_hz(m):
+    return 700.0 * (np.exp(m / 1127.0) - 1.0)
+
+
+def mel_filterbank(num_bins, nfft, sr, low=20.0, high=None):
+    """kaldi-style triangular mel banks (low_freq=20, high_freq=Nyquist)."""
+    if high is None:
+        high = sr / 2.0
+    melpts = np.linspace(hz_to_mel(low), hz_to_mel(high), num_bins + 2)
+    pts = mel_to_hz(melpts)
+    freqs = np.arange(nfft // 2 + 1) * (sr / nfft)
+    w = np.zeros((num_bins, len(freqs)))
+    for b in range(num_bins):
+        lo, ce, hi = pts[b], pts[b + 1], pts[b + 2]
+        left = (freqs - lo) / max(ce - lo, 1e-9)
+        right = (hi - freqs) / max(hi - ce, 1e-9)
+        w[b] = np.maximum(0.0, np.minimum(left, right))
+    return w
+
+
+def kaldi_fbank(sig, sr=16000, num_bins=80, frame_ms=25.0, shift_ms=10.0, preemph=0.97):
+    """numpy kaldi-style fbank: povey window, per-frame dc removal, preemph,
+    512-pt FFT, 80 mel bins, log floor 1e-10. Returns float32 [T, 80]."""
+    N = int(sr * frame_ms / 1000)
+    S = int(sr * shift_ms / 1000)
+    nfft = 1 << (N - 1).bit_length()
+    n = np.arange(N)
+    win = (0.5 - 0.5 * np.cos(2 * np.pi * n / (N - 1))) ** 0.85  # povey
+    banks = mel_filterbank(num_bins, nfft, sr)
+    T = 1 + (len(sig) - N) // S
+    out = np.empty((T, num_bins), np.float64)
+    x = sig.astype(np.float64)
+    for t in range(T):
+        fr = x[t * S:t * S + N].copy()
+        fr -= fr.mean()
+        p = np.empty_like(fr)
+        p[0] = fr[0]
+        p[1:] = fr[1:] - preemph * fr[:-1]
+        p *= win
+        spec = np.abs(np.fft.rfft(p, nfft)) ** 2
+        out[t] = np.log(np.maximum(banks @ spec, 1e-10))
+    return out.astype(np.float32)
+
+
+def read_wav16k(path):
+    with wave.open(path, "rb") as w:
+        assert w.getframerate() == 16000, f"sr={w.getframerate()}, want 16k"
+        assert w.getnchannels() == 1, "want mono"
+        assert w.getsampwidth() == 2, "want 16-bit PCM"
+        raw = w.readframes(w.getnframes())
+    return (np.frombuffer(raw, "<i2").astype(np.float32) / 32768.0)
+
+
+# ---------------- feeds ----------------
+def rand_for(vi, all_inputs, seed, t_frames=32):
+    """Streaming-contract-aware random feeds (smoke gate only)."""
     rng = np.random.default_rng(seed)
     t = vi.type.tensor_type
     elem = onnx.TensorProto.DataType.Name(t.elem_type)
@@ -49,16 +118,15 @@ def rand_for(vi, all_inputs, seed):
         if d is not None and d > 0:
             shape.append(d)
         elif i == 0:
-            shape.append(1)                      # batch
+            shape.append(1)
         elif is_fbank and i == 1:
-            shape.append(32)                     # current-chunk frames
+            shape.append(t_frames)
         elif not is_fbank and i == 1:
-            shape.append(0)                      # initial state: T_prev = 0
+            shape.append(0)
         else:
             shape.append(dims[-1] or 1)
     if elem == "FLOAT":
         if is_fbank:
-            # log-mel scale ~[-20, +5]: random normal noise NaNs the CTC head
             return (rng.random(shape).astype(np.float32) * 25.0) - 20.0
         return rng.standard_normal(shape).astype(np.float32) * 0.5
     if elem in ("INT64", "INT32"):
@@ -68,13 +136,74 @@ def rand_for(vi, all_inputs, seed):
     raise SystemExit(f"unsupported input type {elem} for {vi.name}")
 
 
+def dtype_of(vi):
+    return onnx.TensorProto.DataType.Name(vi.type.tensor_type.elem_type)
+
+
+def parity_loop(sess1, sess2, m, chunks, live_required, label):
+    """Run both graphs chunk-by-chunk, each feeding back its own states.
+    Int inputs maintained per streaming contract:
+      *processed_lens -> frames already processed before this chunk
+      other *_len     -> T_prev of the fed state tensors
+    Returns (report, worst, failed_reason or None)."""
+    in_names = [vi.name for vi in m.graph.input]
+    out_names = [o.name for o in m.graph.output]
+    by_out = {n: i for i in in_names for n in out_names if n == "new_" + i}
+
+    def init_state():
+        return {vi.name: rand_for(vi, m.graph.input, seed=7)
+                for vi in m.graph.input if vi.name != "x"}
+
+    def int_feed(states, c, frames_per_chunk):
+        feed = {}
+        for vi in m.graph.input:
+            n = vi.name
+            if n == "x" or n in states:
+                continue
+            if dtype_of(vi) in ("INT64", "INT32"):
+                if "processed" in n:
+                    feed[n] = np.array([frames_per_chunk * c], np.int64)
+                elif "len" in n:
+                    tprev = next(v.shape[1] for v in states.values() if getattr(v, "ndim", 0) == 3)
+                    feed[n] = np.array([tprev], np.int64)
+                else:
+                    feed[n] = np.zeros([1], np.int64)
+        return feed
+
+    st1, st2 = init_state(), init_state()
+    report, worst, fail = [], 0.0, None
+    for c, x in enumerate(chunks):
+        f1 = {"x": x, **st1, **int_feed(st1, c, x.shape[1])}
+        f2 = {"x": x, **st2, **int_feed(st2, c, x.shape[1])}
+        o1 = dict(zip(out_names, sess1.run(None, f1)))
+        o2 = dict(zip(out_names, sess2.run(None, f2)))
+        a, b = o1["log_probs"], o2["log_probs"]
+        fa, fb = a.astype(np.float64), b.astype(np.float64)
+        na, nb = np.isnan(fa), np.isnan(fb)
+        clean = ~na & ~nb
+        diff = np.abs(np.where(clean, fa - fb, 0.0))
+        mad = float(diff.max()) if clean.any() else 0.0
+        mismatch = int((na ^ nb).sum())
+        print(f"  [{label}] chunk{c}: shape={a.shape} max_abs={mad:.3e} "
+              f"nan(o/f)={int(na.sum())}/{int(nb.sum())} mask_mismatch={mismatch}")
+        report.append({"chunk": c, "shape": list(a.shape), "max_abs": mad,
+                       "nan_orig": int(na.sum()), "nan_folded": int(nb.sum()),
+                       "nan_mask_mismatch": mismatch})
+        worst = max(worst, mad, float("inf") if mismatch else 0.0)
+        if live_required and (int(na.sum()) or int(nb.sum())):
+            fail = fail or f"liveness: chunk{c} produced NaN with real fbank"
+        st1 = {by_out[n]: v for n, v in o1.items() if n in by_out and n != "log_probs"}
+        st2 = {by_out[n]: v for n, v in o2.items() if n in by_out and n != "log_probs"}
+    return report, worst, fail
+
+
 def main():
     m = onnx.load(MODEL)
     before = stats_of(m)
     print(f"[before] nodes={before['nodes']} op_kinds={before['op_kinds']} "
           f"initializers={before['initializers']}")
 
-    sm, ok = simplify(m)  # default: constant folding + shape inference + DCE
+    sm, ok = simplify(m)
     if not ok:
         raise SystemExit("onnxsim simplify check failed")
     after = stats_of(sm)
@@ -84,10 +213,9 @@ def main():
     onnx.save(sm, OUT)
     print(f"saved folded model -> {OUT} ({os.path.getsize(OUT)/1e6:.1f}MB)")
 
-    # ---- parity gate (onnxruntime, CPU fp32, deterministic seeds) ----
     import onnxruntime as ort
     so = ort.SessionOptions()
-    so.graph_optimization_level = ort.GraphOptimizationLevel.ORT_DISABLE_ALL  # fold check, not ORT's
+    so.graph_optimization_level = ort.GraphOptimizationLevel.ORT_DISABLE_ALL
     s1 = ort.InferenceSession(MODEL, so, providers=["CPUExecutionProvider"])
     s2 = ort.InferenceSession(OUT, so, providers=["CPUExecutionProvider"])
 
@@ -95,56 +223,47 @@ def main():
     for vi in m.graph.input:
         t = vi.type.tensor_type
         dims = [d.dim_value if d.HasField("dim_value") else "?" for d in t.shape.dim]
-        print(f"  {vi.name}: {onnx.TensorProto.DataType.Name(t.elem_type)} {dims}")
+        print(f"  {vi.name}: {dtype_of(vi)} {dims}")
 
-    # ---- parity gate: multi-chunk streaming, each model feeds its own states ----
-    # Single-chunk compare shows orig emits NaN in dead slots where the folded
-    # graph emits 0.0 (empty-state subgraphs folded away). Honest gate = deployment
-    # semantics: states loop back per model, log_probs must match every chunk.
-    # If dead slots were live, divergence would amplify within 3 chunks.
-    in_names = [vi.name for vi in m.graph.input]
-    out_names = [o.name for o in m.graph.output]
-    by_out = {}
-    for n in out_names:
-        for i in in_names:
-            if n == "new_" + i or n == i:
-                by_out[n] = i
+    result = {"model": os.path.basename(MODEL), "before": before, "after": after,
+              "node_reduction": round(1 - after["nodes"] / before["nodes"], 4),
+              "tol": TOL}
 
-    state1 = {vi.name: rand_for(vi, m.graph.input, seed=7)
-              for vi in m.graph.input if vi.name != "x"}
-    state2 = dict(state1)
-    report, worst, NCHUNK = [], 0.0, 3
-    for c in range(NCHUNK):
-        x = rand_for(m.graph.input[0], m.graph.input, seed=100 + c)  # fresh chunk
-        o1 = dict(zip(out_names, s1.run(None, {"x": x, **state1})))
-        o2 = dict(zip(out_names, s2.run(None, {"x": x, **state2})))
-        a, b = o1["log_probs"], o2["log_probs"]
-        fa, fb = a.astype(np.float64), b.astype(np.float64)
-        na, nb = np.isnan(fa), np.isnan(fb)
-        clean = ~na & ~nb
-        diff = np.abs(np.where(clean, fa - fb, 0.0))
-        mad = float(diff.max()) if clean.any() else 0.0
-        mismatch = int((na ^ nb).sum())
-        print(f"  chunk{c}: log_probs shape={a.shape} max_abs={mad:.3e} "
-              f"nan(o/f)={int(na.sum())}/{int(nb.sum())} mask_mismatch={mismatch}")
-        report.append({"chunk": c, "shape": list(a.shape), "max_abs": mad,
-                       "nan_orig": int(na.sum()), "nan_folded": int(nb.sum()),
-                       "nan_mask_mismatch": mismatch})
-        worst = max(worst, mad, float("inf") if mismatch else 0.0)
-        state1 = {by_out[n]: v for n, v in o1.items() if n in by_out and n != "log_probs"}
-        state2 = {by_out[n]: v for n, v in o2.items() if n in by_out and n != "log_probs"}
+    # ---- gate A: random smoke (mask symmetry only) ----
+    chunks = [rand_for(m.graph.input[0], m.graph.input, seed=100 + c) for c in range(3)]
+    rep_a, worst_a, _ = parity_loop(s1, s2, m, chunks, live_required=False, label="rand")
+    result["parity_random_smoke"] = rep_a
 
-    TOL = 1e-4  # fp32 folding on int8-quantized graph: quant params are constants,
-    # folded DQ arithmetic must be bit-close (1e-4 headroom for op reordering)
-    reduction = 1 - after["nodes"] / before["nodes"]
+    # ---- gate B: real fbank (THE gate) ----
+    if WAV:
+        sig = read_wav16k(WAV)
+        fb = kaldi_fbank(sig)
+        T_frames = fb.shape[0]
+        frames_per_chunk = 32
+        nchunks = min(12, T_frames // frames_per_chunk)
+        print(f"[real] wav={os.path.basename(WAV)} {len(sig)/16000:.2f}s "
+              f"fbank T={T_frames} chunks={nchunks}")
+        result["real_fbank"] = {"wav": os.path.basename(WAV),
+                                "seconds": round(len(sig) / 16000, 2),
+                                "fbank_frames": T_frames,
+                                "fbank_mean": float(fb.mean()), "fbank_std": float(fb.std()),
+                                "fbank_min": float(fb.min()), "fbank_max": float(fb.max()),
+                                "chunks": nchunks, "frames_per_chunk": frames_per_chunk}
+        chunks = [fb[c * frames_per_chunk:(c + 1) * frames_per_chunk][None, ...] for c in range(nchunks)]
+        rep_b, worst_b, fail_b = parity_loop(s1, s2, m, chunks, live_required=True, label="real")
+        result["parity_real"] = rep_b
+        result["pass"] = (fail_b is None) and worst_b <= TOL
+        result["fail_reason"] = fail_b or (None if worst_b <= TOL else f"real max_abs {worst_b:.3e} > {TOL}")
+    else:
+        print("[real] no --wav given: random smoke only (weak proof)")
+        result["pass"] = worst_a <= TOL
+
     os.makedirs(os.path.dirname(STATS), exist_ok=True)
-    json.dump({"model": os.path.basename(MODEL), "before": before, "after": after,
-               "node_reduction": round(reduction, 4), "parity": report,
-               "tol": TOL, "pass": worst <= TOL},
-              open(STATS, "w"), indent=1)
-    print(f"[gate] node_reduction={reduction:.1%} parity_worst={worst:.3e} tol={TOL}")
-    if worst > TOL:
-        raise SystemExit("D0 PARITY GATE FAILED")
+    json.dump(result, open(STATS, "w"), indent=1)
+    print(f"[gate] node_reduction={result['node_reduction']:.1%} "
+          f"random_worst={worst_a:.3e} tol={TOL} pass={result['pass']}")
+    if not result["pass"]:
+        raise SystemExit(f"D0 GATE FAILED: {result.get('fail_reason')}")
     print("D0 PASS")
 
 
