@@ -175,7 +175,7 @@ async function main() {
           if (c.nBad > 0) {
             groupBad = true;
             const inRep = [];
-            for (const inName of g.kernel.inputs.slice(0, 2)) {
+            for (const inName of g.kernel.inputs) {
               const iref = refView(manifest, bin, inName);
               if (!iref || !rt.A.has(inName)) { inRep.push([inName, "noref"]); continue; }
               const ic = cmpTensor(await rt.readTensor(inName), iref);
@@ -203,7 +203,7 @@ async function main() {
               } catch (e) { rec.probe = "probe-err " + e.message; }
             }
             fails.push(rec);
-            log(`FAIL #${gi} ${g.kernel.kind}[${g.kernel.op}] ${outName.slice(0, 48)} nBad=${c.nBad}/${c.n} maxAbs=${c.maxAbs.toExponential(2)}`, "bad");
+            log(`RESULT_FAIL_JSON:${JSON.stringify(rec)}`, "bad");
           }
         }
         if (!groupBad) nPass++;
@@ -220,7 +220,7 @@ async function main() {
       }
       const pass = fails.length === 0;
       finish({ pass, mode: "whole-collect", nPass, nFail: fails.length,
-               fails: fails.slice(0, 400), byKind,
+               fails: fails.slice(0, 20), byKind,
                worstMaxAbs: worst.maxAbs, worstTensor: worst.tensor,
                elapsedMs: performance.now() - t0 });
       return;
