@@ -158,13 +158,15 @@ async function main() {
     };
     const WHOLE = qs.get("whole") !== "0";  // one-shot submit, compare-only
     if (WHOLE) {
-      // COLLECT-ALL: report every failing kernel in one run (no fail-fast),
-      // then summarize. Probes only run for the first few failures.
+      // COLLECT-ALL, INCREMENTAL: run up to each group end and compare BEFORE
+      // the tensor's slot can be recycled (a whole-run + late compare reads
+      // overwritten slots -> phantom fails). Collect everything, never stop.
       const fails = [];
       let probeBudget = 3;
-      rt.runThrough(rt.groups.length);
+      rt.runThrough(1);
       for (let gi = 0; gi < rt.groups.length; gi++) {
         const g = rt.groups[gi];
+        rt.runThrough(rt.groupEnd[gi]);   // execute exactly up to this group
         let groupBad = false;
         for (const outName of g.kernel.outputs) {
           const ref = refView(manifest, bin, outName);
