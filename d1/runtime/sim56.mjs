@@ -138,6 +138,17 @@ for (const d of group.dispatches) {
         }
         const fa = ldInF(w, 0, off0);
         let fv = fa;
+        if (op === OP.WHERE) {
+          const condOff = off0;
+          const off1 = c[0] * w[28] + c[1] * w[29] + c[2] * w[30] + c[3] * w[31];
+          const off2 = c[0] * w[36] + c[1] * w[37] + c[2] * w[38] + c[3] * w[39];
+          const cond = ldIn(w, 0, condOff);
+          const fx = ldInF(w, 1, off1);
+          const fy = ldInF(w, 2, off2);
+          const v2 = cond !== 0 ? fx : fy;
+          A[w[40] + g] = 0; F[w[40] + g] = v2;
+          continue;
+        }
         if (w[3] > 1) {
           const off1 = c[0] * w[28] + c[1] * w[29] + c[2] * w[30] + c[3] * w[31];
           const fb = ldInF(w, 1, off1);
