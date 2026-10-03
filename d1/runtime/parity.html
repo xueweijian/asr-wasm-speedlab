@@ -34,6 +34,7 @@ const MMI_REL = parseFloat(qs.get("mmi_rel") || "2e-3");
 const STOP = qs.get("stop") !== "0";   // stop at first kernel mismatch
 
 const log = (s, cls) => {
+  console.log(s);  // also to console: drive.mjs forwards [page] lines to CI log
   const d = document.createElement("div");
   if (cls) d.className = cls;
   d.textContent = s;
