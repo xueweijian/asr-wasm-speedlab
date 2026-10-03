@@ -181,7 +181,9 @@ async function main() {
             for (const inName of g.kernel.inputs) {
               const iref = refView(manifest, bin, inName);
               if (!iref || !rt.A.has(inName)) { inRep.push([inName, "noref"]); continue; }
-              const ic = cmpTensor(await rt.readTensor(inName), iref);
+              const isMMIin = g.kernel.kind === "matmul_int8_dq" && iref.dtype === "float32";
+              const ic = cmpTensor(await rt.readTensor(inName), iref,
+                                   isMMIin ? MMI_TOL : TOL, isMMIin ? MMI_REL : REL);
               inRep.push([inName, ic.nBad === 0 ? "OK" : `BAD ${ic.nBad}/${ic.n}`]);
             }
             const rec = { gi, kind: g.kernel.kind, op: g.kernel.op,
