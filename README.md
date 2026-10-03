@@ -66,7 +66,9 @@ c2（最小算子 ORT）**十三发终成**：算子清点 `results/ops-inventor
 | C | ORT 瘦身 + 编译激进化 | ✅ 六格全齐（2026-10-02）：c3 init -29~50%、c4 交付栈、c2 wasm -9%/解码 -11%；c1 证伪入档 |
 | D | 自写引擎：small-ctc 的 raw WGSL GPU-resident 内核 | 🔶 D0 ✅ / D1 进行中：kgen v1.5（dispatch 2169→1148）+ WGSL 运行时 8 管线 + parity 农场（357/1834，详见 `docs/m4-d-track.md` §3） |
 
-实验页部署在 Pages 子路径：`/a0-reference/`（对照组）`/a1-lazy-cache/` `/a2-worklet-16k/` `/a3-vad-gate/` `/a4-worklet-vad/`；
+实验页部署在 Pages 子路径：`/a0-reference/`（对照组）`/a1-lazy-cache/` `/a2-worklet-16k/` `/a3-vad-gate/` `/a4-worklet-vad/` `/c1-minsize/` `/c2-minort/` `/c3-skip-sniff/` `/c4-fullstack/`；
+
+**👉 推荐入口（M3 定版交付页）：[c4 全家桶](https://xueweijian.github.io/asr-wasm-speedlab/c4-fullstack/)** —— 懒加载+SW 缓存 × AudioWorklet 采集 × 能量 VAD+pre-roll × 跳嗅探，RTF 0.038 / 抖动 P95 10ms / recogInit 489ms / 二访零下载。
 自动考台 `bench/browser_bench.py`（Playwright + Chrome 假麦克风），结果落 `results/browser-m1.json`。
 
 ## License
