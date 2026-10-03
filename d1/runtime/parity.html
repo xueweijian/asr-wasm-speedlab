@@ -144,58 +144,70 @@ async function main() {
     };
     const WHOLE = qs.get("whole") !== "0";  // one-shot submit, compare-only
     if (WHOLE) {
+      // COLLECT-ALL: report every failing kernel in one run (no fail-fast),
+      // then summarize. Probes only run for the first few failures.
+      const fails = [];
+      let probeBudget = 3;
       rt.runThrough(rt.groups.length);
       for (let gi = 0; gi < rt.groups.length; gi++) {
         const g = rt.groups[gi];
+        let groupBad = false;
         for (const outName of g.kernel.outputs) {
           const ref = refView(manifest, bin, outName);
           if (!ref) continue;
           const c = cmpTensor(await rt.readTensor(outName), ref);
           if (c.maxAbs > worst.maxAbs) worst = { maxAbs: c.maxAbs, tensor: outName };
           if (c.nBad > 0) {
+            groupBad = true;
             const inRep = [];
-            for (const inName of g.kernel.inputs) {
+            for (const inName of g.kernel.inputs.slice(0, 2)) {
               const iref = refView(manifest, bin, inName);
               if (!iref || !rt.A.has(inName)) { inRep.push([inName, "noref"]); continue; }
               const ic = cmpTensor(await rt.readTensor(inName), iref);
               inRep.push([inName, ic.nBad === 0 ? "OK" : `BAD ${ic.nBad}/${ic.n}`]);
             }
-            // probes: standalone re-dispatch + input slot raw dump
-            const probe = { redisp: null, inRaw: {} };
-            try {
-              const enc2 = rt.device.createCommandEncoder();
-              const pass2 = enc2.beginComputePass();
-              for (const d of g.dispatches) {
-                pass2.setPipeline(rt.pipes[d.pipe]);
-                pass2.setBindGroup(0, rt.bg, [d.block * 512]);
-                pass2.dispatchWorkgroups(d.wg);
-              }
-              pass2.end();
-              rt.device.queue.submit([enc2.finish()]);
-              const gpu2 = await rt.readTensor(outName);
-              const c2 = cmpTensor(gpu2, ref);
-              probe.redisp = `nBad=${c2.nBad}/${c2.n} got=${c2.got} want=${c2.want}`;
-              const in0 = g.kernel.inputs[0];
-              const slot = rt.A.get(in0);
-              if (slot !== undefined) {
-                const raw = await rt.readRaw(slot, 4);
-                const ff = raw.map((u) => { const b = new ArrayBuffer(4); new Uint32Array(b)[0] = u; return new Float32Array(b)[0].toFixed(4); });
-                probe.inRaw[in0] = ff.join(",");
-              }
-            } catch (e) { probe.redisp = "probe-err " + e.message; }
-            log(`FAIL(whole) kernel#${gi} ${g.kernel.kind}[${g.kernel.op}] out=${outName} nBad=${c.nBad}/${c.n}`, "bad");
-            finish({ pass: false, mode: "whole", probe, gi, kind: g.kernel.kind, op: g.kernel.op,
-                     tensor: outName, nBad: c.nBad, n: c.n, got: c.got, want: c.want,
-                     inputs: inRep, nPass: gi,
-                     elapsedMs: performance.now() - t0 });
-            return;
+            const rec = { gi, kind: g.kernel.kind, op: g.kernel.op,
+                          tensor: outName, nBad: c.nBad, n: c.n, got: c.got, want: c.want,
+                          maxAbs: c.maxAbs, inputs: inRep, probe: null };
+            // probes (re-dispatch determinism check) for the first few only
+            if (probeBudget > 0 && g.dispatches.length <= 4) {
+              probeBudget--;
+              try {
+                const enc2 = rt.device.createCommandEncoder();
+                const pass2 = enc2.beginComputePass();
+                for (const d of g.dispatches) {
+                  pass2.setPipeline(rt.pipes[d.pipe]);
+                  pass2.setBindGroup(0, rt.bg, [d.block * 512]);
+                  pass2.dispatchWorkgroups(d.wg);
+                }
+                pass2.end();
+                rt.device.queue.submit([enc2.finish()]);
+                const gpu2 = await rt.readTensor(outName);
+                const c2 = cmpTensor(gpu2, ref);
+                rec.probe = `redisp nBad=${c2.nBad}/${c2.n} got=${c2.got} (det=${c2.got === c.got})`;
+              } catch (e) { rec.probe = "probe-err " + e.message; }
+            }
+            fails.push(rec);
+            log(`FAIL #${gi} ${g.kernel.kind}[${g.kernel.op}] ${outName.slice(0, 48)} nBad=${c.nBad}/${c.n} maxAbs=${c.maxAbs.toExponential(2)}`, "bad");
           }
         }
-        nPass++;
+        if (!groupBad) nPass++;
       }
-      log(`WHOLE PASS ${nPass} kernels (worst ${worst.maxAbs.toExponential(3)} @ ${worst.tensor || "-"})`, "ok");
-      finish({ pass: true, mode: "whole", nPass, worstMaxAbs: worst.maxAbs,
-               worstTensor: worst.tensor, elapsedMs: performance.now() - t0 });
+      // summarize by kind
+      const byKind = {};
+      for (const f of fails) {
+        const key = `${f.kind}[${f.op}]`;
+        (byKind[key] = byKind[key] || []).push(f.gi);
+      }
+      log(`=== COLLECT-ALL: pass ${nPass}/${rt.groups.length}, fail ${fails.length} ===`, fails.length ? "bad" : "ok");
+      for (const [key, gis] of Object.entries(byKind)) {
+        log(`  ${key}: ${gis.length} fails, gi ${gis.slice(0, 12).join(",")}${gis.length > 12 ? "..." : ""}`, "bad");
+      }
+      const pass = fails.length === 0;
+      finish({ pass, mode: "whole-collect", nPass, nFail: fails.length,
+               fails: fails.slice(0, 400), byKind,
+               worstMaxAbs: worst.maxAbs, worstTensor: worst.tensor,
+               elapsedMs: performance.now() - t0 });
       return;
     }
     for (let gi = 0; gi < rt.groups.length; gi++) {
