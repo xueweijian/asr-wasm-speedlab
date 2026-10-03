@@ -19,6 +19,11 @@ const MODE = qs.get("mode") || "kernel";
 const TOL = parseFloat(qs.get("tol") || "1e-4");
 const REL = parseFloat(qs.get("rel") || "3e-6");  // fp32 mathlib ulp budget
 const tolOf = (want) => TOL + REL * Math.abs(want);
+// matmul_int8_dq calibrated gate (d1/calib_mmi.py): quantization int wobble
+// (GPU qstat scale 1-ulp vs ORT) lands <= 8.7e-4 @K512; zp-class real errors
+// are 4.2e-2 — the gate separates them by >20x margin
+const MMI_TOL = parseFloat(qs.get("mmi_tol") || "2e-3");
+const MMI_REL = parseFloat(qs.get("mmi_rel") || "2e-3");
 const STOP = qs.get("stop") !== "0";   // stop at first kernel mismatch
 
 const log = (s, cls) => {
@@ -54,7 +59,7 @@ function refView(manifest, bin, name) {
   return { raw: slice, shape: m.shape, dtype: dt };
 }
 
-function cmpTensor(gpuBuf, ref) {
+function cmpTensor(gpuBuf, ref, tol = 1e-4, rel = 3e-6) {
   // gpuBuf: ArrayBuffer of u32 slots (1 slot per element; int64 -> 2)
   const n = ref.shape.reduce((a, b) => a * b, 1);
   let nBad = 0, maxAbs = 0, firstIdx = -1, got = 0, want = 0;
@@ -66,7 +71,8 @@ function cmpTensor(gpuBuf, ref) {
       const a = g[i], b = ref.f[i];
       if (Number.isNaN(a) && Number.isNaN(b)) continue;
       const d = Math.abs(a - b);
-      if (!(Number.isNaN(a) === Number.isNaN(b)) || d > tolOf(b)) {
+      const gate = (w) => tol + rel * Math.abs(w);
+      if (!(Number.isNaN(a) === Number.isNaN(b)) || d > gate(b)) {
         if (firstIdx < 0) { firstIdx = i; got = a; want = b; }
         nBad++;
       }
@@ -155,7 +161,9 @@ async function main() {
         for (const outName of g.kernel.outputs) {
           const ref = refView(manifest, bin, outName);
           if (!ref) continue;
-          const c = cmpTensor(await rt.readTensor(outName), ref);
+          const isMMI = g.kernel.kind === "matmul_int8_dq" && ref.dtype === "float32";
+          const c = cmpTensor(await rt.readTensor(outName), ref,
+                              isMMI ? MMI_TOL : TOL, isMMI ? MMI_REL : REL);
           if (c.maxAbs > worst.maxAbs) worst = { maxAbs: c.maxAbs, tensor: outName };
           if (c.nBad > 0) {
             groupBad = true;
