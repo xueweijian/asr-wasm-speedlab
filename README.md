@@ -64,7 +64,7 @@ c2（最小算子 ORT）**十三发终成**：算子清点 `results/ops-inventor
 | A4/M1.5 | Worklet+VAD 合体 + pre-roll 防首字clip | ✅ |
 | B | 多线程 wasm 重编（-pthread + coi-serviceworker） | ⏸ 调研后建议跳过：见 `docs/m2-feasibility.md`（天花板 -10%、需源码编 ORT wasm threads + SAB 基建） |
 | C | ORT 瘦身 + 编译激进化 | ✅ 六格全齐（2026-10-02）：c3 init -29~50%、c4 交付栈、c2 wasm -9%/解码 -11%；c1 证伪入档 |
-| D | 自写引擎：small-ctc 的 raw WGSL GPU-resident 内核 | ⏳ |
+| D | 自写引擎：small-ctc 的 raw WGSL GPU-resident 内核 | 🔶 D0 ✅ / D1 进行中：kgen v1.5（dispatch 2169→1148）+ WGSL 运行时 8 管线 + parity 农场（357/1834，详见 `docs/m4-d-track.md` §3） |
 
 实验页部署在 Pages 子路径：`/a0-reference/`（对照组）`/a1-lazy-cache/` `/a2-worklet-16k/` `/a3-vad-gate/` `/a4-worklet-vad/`；
 自动考台 `bench/browser_bench.py`（Playwright + Chrome 假麦克风），结果落 `results/browser-m1.json`。

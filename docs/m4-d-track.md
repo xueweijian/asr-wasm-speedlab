@@ -50,6 +50,20 @@ fixtures wav ──> ORT fp32 参考输出（真值锚）    ├─ wgsl-runtime
   | v1.5 fuseq | **1148** | 686 | 贪心单消费链（elementwise+control+reduce → 372 条链，均长 2.7——残差流分支限制链长） |
   剩余构成：206 matmul_int8_dq + 54 conv + 60 matmul_fp + 13 softmax + 372 fuseq + ~400 孤立 elementwise。**到"几十"必须模块级融合**（12 stack 同构 → 手写一次参数化复用）；686 layout 待"融进生产者写布局"。
 - 内核池初版范围（普查定案）：matmul_int8_dq(216) + conv(54) + matmul_fp(60) + softmax/logsoftmax(13) + reduce(19) + elementwise 模板 + control(Where/Equal 掩码，静态化后多数进常量)。
+- **D1a WGSL 运行时 + parity 农场上线（2026-10-03，d1/runtime/）**：
+  - **运行时**（rt.js + wgsl.js）：8 条管线（copy/gather/elem/reduce/softmax/matmul_fp/conv/qstat+qgemm），uniform 512B/dispatch 单 bindGroup dynamic-offset，arena A（激活）+ W（权重）双 storage，Kahn 拓扑重排，whole/增量两执行模式。
+  - **parity 农场**（parity.html + drive.mjs，Actions macOS Metal 真后端）：chunk0 全中间真值（3469 张量）逐 kernel 对照，**collect-all 模式**一轮暴露全部卡点（增量执行：runThrough(groupEnd[gi]) 后立即对照——whole-run 晚对照在 slot 复用下会读覆盖垃圾，虽然当前 arena 无复用，保持增量防御）。
+  - **进度：nPass 357/1834**，剩余 fail 集中在 MMI 上游污染（见下）。
+  - **已定案的三类噪声/bug 判据**（d1/calib_mmi.py，numpy f64 标定）：
+    | 类别 | 量级 | 处置 |
+    |---|---|---|
+    | MMI 量化整数 ±1 抖动（GPU qstat scale 1ulp vs ORT） | max 8.7e-4 | 门限 2e-3+2e-3·\|ref\| 放行 |
+    | zp 差 1 类真 bug | 4.2e-2（=门限 21 倍） | 门限仍拦截 |
+    | f32 逐层传播噪声（softmax <1e-4 噪声 × matmul 放大 ~13×/层） | 1.45e-3 @ 12 层中段 | float 门限 5e-4+2e-2·rel 放行；bool/int 保持精确 |
+  - **破案记录**：#52/#83 Reshape rank 错位（copy-as-gather 教训：Reshape 必须 flat copy）；#154 MMI 量化噪声标定放行；#164 matmul_fp GPU 特有 1.45e-3（本地位级干净）定性为 f32 传播噪声；#177 Where 洗清（numpy 反推 cond 全 false、out==y 成立）。
+  - **已知工具坑**：① parity log() 必须 console.log 镜像（drive.mjs 只转发 console）② GitHub log 单行 ~70K 截断 → 每条 fail 独立 RESULT_FAIL_JSON 行 ③ inputs 对照与输出对照必须同门限（旧默认 1e-4 会造出幻影 BAD 输入、"roots=0"假象）④ push_api.py 状态机错位会静默丢 commit，push 后拉远端验证 ⑤ MMI 组的 det=false probe 无意义（qstat 每次重算 scale 微差）。
+  - **sim56 VM**（sim56.mjs）：CPU 位级模拟器，复刻 dispatch words 语义（elem/copy/gather/reduce/WHERE），单组诊断利器（seed 相关 ref 张量 → 跑语义 → 对照）；WHERE 必须在 intMode 分支之前。
+  - **下一步**：统一门限后的增量 collect-all 轮（3ed7d11f+）出**可信真根因清单** → 按根因批量修 → e2e 门（log_probs）→ 性能 bench（dispatch 1148 → 模块级融合）。
 
 ## 4. 分层验证门（继承 diar-gpu-engine 方法论）
 
